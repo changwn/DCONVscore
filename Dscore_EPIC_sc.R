@@ -3,6 +3,11 @@ library(EPIC)
 setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
 
 
+dasdgsd
+sdfgsdf
+
+
+
 # 1. GSE72056 melanoma
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE72056_tg_data_list.RData")
 tg_data_list <- GSE72056_tg_data_list 
