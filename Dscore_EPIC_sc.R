@@ -3,42 +3,50 @@ library(EPIC)
 setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
 
 
-dasdgsd
-sdfgsdf
-
-
-
 # 1. GSE72056 melanoma
+dataSet = "GSE72056"
+list_flag <- T
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE72056_tg_data_list.RData")
 tg_data_list <- GSE72056_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE72056
-# 2. GSE70630 oligodendroglioma
+# 2. GSE70630 oligodendroglioma % in brain?
+dataSet = "GSE70630"
+list_flag <- T
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE70630_tg_data_list.RData")
 tg_data_list <- GSE70630_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE70630
 # 3. GSE89567 astrocytoma
+dataSet <- "GSE89567"
+list_flag <- F
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE89567_tg_data_list.RData")
 tg_data_list <- GSE89567_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE89567
 # 4. GSE103322 HNC
+dataSet <- "GSE103322"
+list_flag <- T
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE103322_tg_data_list.RData")
 tg_data_list <- GSE103322_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE103322
 
 
 # 5. GSE75688 breast cancer
+dataSet <- "GSE75688"
+list_flag <- F
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_29_singleCellSimulated/GSE75688_tg_data_list.RData")
 tg_data_list <- GSE75688_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE75688
 # 6. GSE81861 colorectal tumors
+dataSet <- "GSE81861"
+list_flag <- F
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_29_singleCellSimulated/GSE81861_tg_data_list.RData")
 tg_data_list <- GSE81861_tg_data_list 
 Cell_Prop <- Cell_Prop_GSE81861
 
 
-i=1
-bulk <- tg_data_list[[i]][[1]]
-#bulk <- tg_data_list[[i]]
+# set parameter
+d=1
+if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
+if(list_flag == F)	bulk <- tg_data_list[[d]]
 out <- EPIC(bulk)
 
 commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
@@ -150,7 +158,7 @@ out_base <- EPIC(bulk1, sigGenes = base)
 prop_base <- out_base$cellFraction[, 1:7]
 Dscore_init <- cal_Dscore_abs(prop_base, bulk1)
 
-# score of explaination level of original data
+# choice 1 :score of explaination level of original data
 while(F){
 #remainSet <- setdiff(sigGeneEpic, top_gene)
 #top_gene_add <- top_gene
@@ -177,16 +185,142 @@ for(i in 1:length(remainSet)){
 }
 print(top_gene_add)
 }
-
+# plot
 x <- c(1:88)
 wholeName <- matrix(NA,1,88)
 wholeName[match(increase_gene, remainSet)] <- increase_gene
-plot(x, Dscore_Yaxis, type = 'l', main = "GSE103322 HNC, score")
+plot(x, Dscore_Yaxis, type = 'l', main = "GSE72056 melanoma, score")
 text(x, Dscore_Yaxis, wholeName, cex=0.8,  col = "red", srt = 30)
 base_char <- paste(base, sep="", collapse=",")
-text(35, 0.755, base_char, cex=0.7, col="black")
+text(35, 0.908, base_char, cex=0.7, col="black")
 gene_char <- paste(setdiff(top_gene_add,base), sep=" ", collapse=",")
-text(40, 0.751, gene_char, cex=0.7,  col = "blue")
+text(45, 0.905, gene_char, cex=0.7,  col = "blue")
+
+# choice 2:exptected Bcell,Tcell,CAFs curve changes with the number of gene accumulated 
+remainSet <- names(dd_copy_order[11:98])
+top_gene_add <- base
+if(dataSet == "GSE72056") Dscore_mat <- matrix(NA, length(remainSet), 9)
+if(dataSet == "GSE70630") Dscore_mat <- matrix(NA, length(remainSet), 1)
+if(dataSet == "GSE89567") Dscore_mat <- matrix(NA, length(remainSet), 1)
+if(dataSet == "GSE103322") Dscore_mat <- matrix(NA, length(remainSet), 10)
+if(dataSet == "GSE75688") Dscore_mat <- matrix(NA, length(remainSet), 8)
+if(dataSet == "GSE81861") Dscore_mat <- matrix(NA, length(remainSet), 8)
+#Dscore_mat <- c()
+increase_gene <- c()
+for(i in 1:length(remainSet)){
+	print(i)
+	top_gene_add <- union(top_gene_add, remainSet[i])
+	out_ep <- EPIC(bulk1, sigGenes=top_gene_add)
+	prop_add <- out_ep$cellFraction[,1:8]
+	prop_true <- t(Cell_Prop[[d]])
+	corr_add <- cor(prop_add, prop_true)
+	if(dataSet == "GSE72056"){	
+		Dscore_mat[i, 1] <- corr_add[1, 1]	#B cell
+		Dscore_mat[i, 2] <- corr_add[3, 2]	#CD4 T
+		Dscore_mat[i, 3] <- corr_add[3, 2]	#CD8 T
+		Dscore_mat[i, 4] <- corr_add[8, 3]	#tumor
+		Dscore_mat[i, 5] <- corr_add[6, 4]	#macrophage
+		Dscore_mat[i, 6] <- corr_add[2, 5]	#Fibroblast
+		Dscore_mat[i, 7] <- corr_add[5, 6]	#endothelial
+		Dscore_mat[i, 8] <- mean(Dscore_mat[i, 1:7])	#average
+		tmp <- (sum(Dscore_mat[i,1:7]) - Dscore_mat[i, 4])/6
+		Dscore_mat[i, 9] <- tmp
+		if(i==1) colnames(Dscore_mat) <- c("B","cd4","CD8","tumor","macrophage","Fibroblast","endothelial","ave_all","ave_6")
+	}
+	if(dataSet == "GSE70630"){
+		Dscore_mat[i, 1] <- corr_add[6, 2]
+		colnames(Dscore_mat) <- c("macrophages_macroglio")
+	}
+	if(dataSet == "GSE89567"){
+		Dscore_mat[i, 1] <- corr_add[6, 5]
+		colnames(Dscore_mat) <- c("macroglio")	
+	}
+	if(dataSet == "GSE103322"){
+		Dscore_mat[i, 1] <- corr_add[8 ,1]	#tumor
+		Dscore_mat[i, 2] <- corr_add[3, 2]	#CD4T
+		Dscore_mat[i, 3] <- corr_add[4, 2]	#CD8T
+		Dscore_mat[i, 4] <- corr_add[1, 3]	#B
+		Dscore_mat[i, 5] <- corr_add[2, 5]	#fibroblast
+		Dscore_mat[i, 6] <- corr_add[5, 6]	#endothelial
+		Dscore_mat[i, 7] <- corr_add[5, 7]	#epithelial?
+		Dscore_mat[i, 8] <- corr_add[6, 8]	#macrophage
+		Dscore_mat[]	#mast?
+		Dscore_mat[i, 9] <- mean(Dscore_mat[i, 1:8])	#ave_all
+		tmp <- (sum(Dscore_mat[i,1:8]) - Dscore_mat[i, 1])/7	#ave_7
+		Dscore_mat[i,10] <- tmp
+		if(i==1) colnames(Dscore_mat) <- c("tumor","cd4t","cd8t","B","fibroblast","endothelial","epithelial","macrophage","ave_all","ave_7")
+	}
+	if(dataSet == "GSE75688"){
+		Dscore_mat[i, 1] <- corr_add[1, 1]	#B
+		Dscore_mat[i, 2] <- corr_add[3, 2]	#CD4T
+		Dscore_mat[i, 3] <- corr_add[4, 2]	#CD8T
+		Dscore_mat[i, 4] <- corr_add[8, 3]	#tumor
+		Dscore_mat[i, 5] <- corr_add[6, 4]	#myeloid_macrophage
+		Dscore_mat[i, 6] <- corr_add[2, 5]	#stromal(fibroblast)
+		Dscore_mat[i, 7] <- (sum(Dscore_mat[i,1:6]) - Dscore_mat[i, 4]) / 5
+		Dscore_mat[i, 8] <- mean(Dscore_mat[i, 1:6])
+		if(i==1) colnames(Dscore_mat) <- c("B","cd4t","cd8t","tumor","myeloid_macrophage","fibroblast","ave_5","ave_all")
+	}
+	if(dataSet == "GSE81861"){
+		Dscore_mat[i, 1] <- corr_add[3, 1]	#cd4t
+		Dscore_mat[i, 2] <- corr_add[4, 1]	#cd8t
+		Dscore_mat[i, 3] <- corr_add[5, 2]	#epithelial_endothelial
+		Dscore_mat[i, 4] <- corr_add[1, 3]	#B
+		Dscore_mat[i, 5] <- corr_add[6, 5]	#macrophage
+		Dscore_mat[i, 6] <- corr_add[2, 6]	#fibroblast
+		Dscore_mat[i, 7] <- corr_add[5, 7]	#endothelial
+		Dscore_mat[i, 8] <- (sum(Dscore_mat[i,1:7]) - Dscore_mat[i,3] ) / 6
+		if(i==1) colnames(Dscore_mat) <- c("cd4t", "cd8t","err:epithelial","B","macrophage","fibroblast","endothelial","ave_6")
+	}
+}
+
+#plot
+#par(mfrow = c(2,1))
+#matplot(Dscore_mat, type=c("l"), pch = 1, col = 1:8)
+#legend("bottomright", legend = colnames(Dscore_mat), col=1:8, pch=1)
+if(dataSet == "GSE72056"){
+	matplot(Dscore_mat[,-c(4,8)], type=c("l"), pch = 1, col = 1:7, main="GSE72056 melanoma, cor score")
+	leg <- union(colnames(Dscore_mat)[1:3],colnames(Dscore_mat)[5:7])
+	leg <- union(leg, colnames(Dscore_mat)[9])
+	legend("bottomright", legend = leg, col=1:7, pch=1)
+}
+if(dataSet == "GSE70630"){
+	plot(Dscore_mat, type = 'l', main = "GSE70630 oligodendroglioma")
+}
+if(dataSet == "GSE89567"){
+	plot(Dscore_mat, type = 'l', main = "GSE89567 astrocytoma")
+}
+if(dataSet == "GSE103322"){
+	#matplot(Dscore_mat, type='l', pch=1, col=1:10, main="GSE103322 HNC,cor score")
+	#legend("bottomright", legend = colnames(Dscore_mat), col=1:10, pch=1)
+	tmp_mat <- cbind(Dscore_mat[, 2:8], Dscore_mat[,10])
+	matplot(tmp_mat, type='l', pch=1, col=1:8, main="GSE103322 HNC,cor score")
+	leg <- union(colnames(Dscore_mat)[2:8],colnames(Dscore_mat)[10])
+	legend("bottomright", legend = leg, col=1:8, pch=1)
+}
+if(dataSet == "GSE75688"){
+	tmp_mat <- cbind(Dscore_mat[,1:3], Dscore_mat[,5:7])
+	matplot(tmp_mat, type='l', pch=1, col=1:6, main="GSE75688 breast,cor score")
+	leg <- union(colnames(Dscore_mat)[1:3], colnames(Dscore_mat)[5:7])
+	legend("bottomright", legend = leg, col=1:6, pch=1)
+}
+if(dataSet == "GSE81861"){
+	matplot(Dscore_mat, type="l", pch=1, col=1:8, main="GSE81861 colorectal,cor score")
+	legend("bottomright", legend = colnames(Dscore_mat), col = 1:8, pch = 1)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # evaluation
