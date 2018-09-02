@@ -47,7 +47,7 @@ Cell_Prop <- Cell_Prop_GSE81861
 d=1
 if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
 if(list_flag == F)	bulk <- tg_data_list[[d]]
-out <- EPIC(bulk)
+#out <- EPIC(bulk)
 
 commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
 length(commonGene)
@@ -234,7 +234,7 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 6] <- corr_add[5, 6]	#endothelial
 		Dscore_mat[i, 7] <- mean(Dscore_mat[i, 1:6])	#average
 		tmp <- (sum(Dscore_mat[i,1:6]) - Dscore_mat[i, 3]) / 5
-		Dscore_mat[i, 8] <- tmp  			#ave-6
+		Dscore_mat[i, 8] <- tmp  			#ave-5
 		if(i==1) colnames(Dscore_mat) <- c("B","T","tumor","macrophage","Fibroblast","endothelial","ave_all","ave_5")
 
 	}
