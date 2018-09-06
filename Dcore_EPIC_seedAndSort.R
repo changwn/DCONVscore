@@ -49,6 +49,7 @@ Cell_Prop <- Cell_Prop_GSE81861
 
 
 # set parameter
+random <- T
 d=1
 if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
 if(list_flag == F)	bulk <- tg_data_list[[d]]
@@ -111,6 +112,7 @@ print(Dscore_init)
 
 # Iteration: test remain gene 
 remainSet <- setdiff(names(dd_copy_order), base)
+if(random == T) remainSet <- sort(remainSet)
 top_gene_add <- base
 if(dataSet == "GSE72056") Dscore_mat <- matrix(NA, length(remainSet), 8+2)
 if(dataSet == "GSE70630") Dscore_mat <- matrix(NA, length(remainSet), 1)
@@ -141,15 +143,17 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 9] <- corr_add[3, 2]	#cd4t
 		Dscore_mat[i,10] <- corr_add[4, 2]	#cd8t
 		if(i==1) colnames(Dscore_mat) <- c("B","T","tumor","macrophage","Fibroblast","endothelial","ave_all","ave_5","cd4t","cd8t")
-
+		mat72056 <- Dscore_mat
 	}
 	if(dataSet == "GSE70630"){
 		Dscore_mat[i, 1] <- corr_add[6, 2]
 		colnames(Dscore_mat) <- c("macrophages_macroglio")
+		mat70630 <- Dscore_mat
 	}
 	if(dataSet == "GSE89567"){
 		Dscore_mat[i, 1] <- corr_add[6, 5]
-		colnames(Dscore_mat) <- c("macroglio")	
+		colnames(Dscore_mat) <- c("macroglio")
+		mat89567 <- Dscore_mat	
 	}
 	if(dataSet == "GSE103322"){
 		Dscore_mat[i, 1] <- corr_add[8 ,1]	#tumor
@@ -166,6 +170,7 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i,10]<- corr_add[3, 2]	#cd4t
 		Dscore_mat[i,11]<- corr_add[4, 2]	#cd8t
 		if(i==1) colnames(Dscore_mat) <- c("tumor","cd4+8t","B","fibroblast","endothelial","epithelial","macrophage","ave_all","ave_6","cd4t","cd8t")
+		mat103322 <- Dscore_mat
 	}
 	if(dataSet == "GSE75688"){
 		Dscore_mat[i, 1] <- corr_add[1, 1]	#B
@@ -179,6 +184,7 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 8] <- corr_add[3, 2]	#cd4t
 		Dscore_mat[i, 9] <- corr_add[4, 2]	#co8t
 		if(i==1) colnames(Dscore_mat) <- c("B","cd4+8t","tumor","myeloid_macrophage","fibroblast","ave_5","ave_all","cd4t","cd8t")
+		mat75688 <- Dscore_mat
 	}
 	if(dataSet == "GSE81861"){
 		Dscore_mat[i, 1] <- corr_add[9, 1]	#cd4+8
@@ -192,6 +198,7 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 8] <- corr_add[3, 1]	#cd4t
 		Dscore_mat[i, 9] <- corr_add[4, 1]	#cd8t
 		if(i==1) colnames(Dscore_mat) <- c("cd4+8t","err:epithelial","B","macrophage","fibroblast","endothelial","ave_6","cd4t","cd8t")
+		mat81861 <- Dscore_mat
 	}
 }
 
@@ -230,8 +237,8 @@ if(dataSet == "GSE75688"){
 	legend("bottomright", legend = leg, col=1:7, pch=1)
 }
 if(dataSet == "GSE81861"){
-	matplot(Dscore_mat, type="l", pch=1, col=1:7, main="GSE81861 colorectal,cor score")
-	legend("bottomright", legend = colnames(Dscore_mat), col = 1:7, pch = 1)
+	matplot(Dscore_mat, type="l", pch=1, col=1:9, main="GSE81861 colorectal,cor score")
+	legend("bottomright", legend = colnames(Dscore_mat), col = 1:9, pch = 1)
 }
 
 

@@ -209,12 +209,12 @@ sum_cd4_cd8 <- function(mat){
 # choice 2:exptected Bcell,Tcell,CAFs curve changes with the number of gene accumulated 
 remainSet <- names(dd_copy_order[11:98])
 top_gene_add <- base
-if(dataSet == "GSE72056") Dscore_mat <- matrix(NA, length(remainSet), 8)
+if(dataSet == "GSE72056") Dscore_mat <- matrix(NA, length(remainSet), 8+2)
 if(dataSet == "GSE70630") Dscore_mat <- matrix(NA, length(remainSet), 1)
 if(dataSet == "GSE89567") Dscore_mat <- matrix(NA, length(remainSet), 1)
-if(dataSet == "GSE103322") Dscore_mat <- matrix(NA, length(remainSet), 9)
-if(dataSet == "GSE75688") Dscore_mat <- matrix(NA, length(remainSet), 7)
-if(dataSet == "GSE81861") Dscore_mat <- matrix(NA, length(remainSet), 7)
+if(dataSet == "GSE103322") Dscore_mat <- matrix(NA, length(remainSet), 9+2)
+if(dataSet == "GSE75688") Dscore_mat <- matrix(NA, length(remainSet), 7+2)
+if(dataSet == "GSE81861") Dscore_mat <- matrix(NA, length(remainSet), 7+2)
 #Dscore_mat <- c()
 increase_gene <- c()
 for(i in 1:length(remainSet)){
@@ -235,7 +235,9 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 7] <- mean(Dscore_mat[i, 1:6])	#average
 		tmp <- (sum(Dscore_mat[i,1:6]) - Dscore_mat[i, 3]) / 5
 		Dscore_mat[i, 8] <- tmp  			#ave-5
-		if(i==1) colnames(Dscore_mat) <- c("B","T","tumor","macrophage","Fibroblast","endothelial","ave_all","ave_5")
+		Dscore_mat[i, 9] <- corr_add[3, 2]
+		Dscore_mat[i,10] <- corr_add[4, 2]
+		if(i==1) colnames(Dscore_mat) <- c("B","T","tumor","macrophage","Fibroblast","endothelial","ave_all","ave_5","cd4t","cd8t")
 
 	}
 	if(dataSet == "GSE70630"){
@@ -258,21 +260,25 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 8] <- mean(Dscore_mat[i, 1:7])	#ave_all
 		tmp <- (sum(Dscore_mat[i,1:7]) - Dscore_mat[i, 1]) / 6	#ave_6
 		Dscore_mat[i,9] <- tmp
-		if(i==1) colnames(Dscore_mat) <- c("tumor","cd4+8t","B","fibroblast","endothelial","epithelial","macrophage","ave_all","ave_6")
+		Dscore_mat[i,10]<- corr_add[3, 2]
+		Dscore_mat[i,11]<- corr_add[4, 2]
+		if(i==1) colnames(Dscore_mat) <- c("tumor","cd4+8t","B","fibroblast","endothelial","epithelial","macrophage","ave_all","ave_6","cd4t","cd8t")
 	}
 	if(dataSet == "GSE75688"){
 		Dscore_mat[i, 1] <- corr_add[1, 1]	#B
-		Dscore_mat[i, 2] <- corr_add[9, 2]	#CD4T
+		Dscore_mat[i, 2] <- corr_add[9, 2]	#CD4+8
 		
 		Dscore_mat[i, 3] <- corr_add[8, 3]	#tumor
 		Dscore_mat[i, 4] <- corr_add[6, 4]	#myeloid_macrophage
 		Dscore_mat[i, 5] <- corr_add[2, 5]	#stromal(fibroblast)
 		Dscore_mat[i, 6] <- (sum(Dscore_mat[i,1:5]) - Dscore_mat[i, 3]) / 4
 		Dscore_mat[i, 7] <- mean(Dscore_mat[i, 1:5])
-		if(i==1) colnames(Dscore_mat) <- c("B","cd4+8t","tumor","myeloid_macrophage","fibroblast","ave_5","ave_all")
+		Dscore_mat[i, 8] <- corr_add[3, 2]
+		Dscore_mat[i, 9] <- corr_add[4, 2]
+		if(i==1) colnames(Dscore_mat) <- c("B","cd4+8t","tumor","myeloid_macrophage","fibroblast","ave_5","ave_all","cd4t","cd8t")
 	}
 	if(dataSet == "GSE81861"){
-		Dscore_mat[i, 1] <- corr_add[9, 1]	#cd4t
+		Dscore_mat[i, 1] <- corr_add[9, 1]	#cd4+8
 		
 		Dscore_mat[i, 2] <- corr_add[5, 2]	#epithelial_endothelial
 		Dscore_mat[i, 3] <- corr_add[1, 3]	#B
@@ -280,7 +286,9 @@ for(i in 1:length(remainSet)){
 		Dscore_mat[i, 5] <- corr_add[2, 6]	#fibroblast
 		Dscore_mat[i, 6] <- corr_add[5, 7]	#endothelial
 		Dscore_mat[i, 7] <- mean(Dscore_mat[i, 1:6])
-		if(i==1) colnames(Dscore_mat) <- c("cd4+8t","err:epithelial","B","macrophage","fibroblast","endothelial","ave_6")
+		Dscore_mat[i, 8] <- corr_add[3, 1]
+		Dscore_mat[i, 9] <- corr_add[4, 1]
+		if(i==1) colnames(Dscore_mat) <- c("cd4+8t","err:epithelial","B","macrophage","fibroblast","endothelial","ave_6","cd4t","cd8t")
 	}
 }
 
@@ -289,10 +297,10 @@ for(i in 1:length(remainSet)){
 #matplot(Dscore_mat, type=c("l"), pch = 1, col = 1:8)
 #legend("bottomright", legend = colnames(Dscore_mat), col=1:8, pch=1)
 if(dataSet == "GSE72056"){
-	matplot(Dscore_mat[,-c(3,7)], type=c("l"), pch = 1, col = 1:6, main="GSE72056 melanoma, cor score")
+	matplot(Dscore_mat[,-c(3,7)], type=c("l"), pch = 1, col = 1:8, main="GSE72056 melanoma, cor score")
 	leg <- union(colnames(Dscore_mat)[1:2],colnames(Dscore_mat)[4:6])
-	leg <- union(leg, colnames(Dscore_mat)[8])
-	legend("bottomright", legend = leg, col=1:6, pch=1)
+	leg <- union(leg, colnames(Dscore_mat)[8:10])
+	legend("bottomright", legend = leg, col=1:8, pch=1)
 }
 if(dataSet == "GSE70630"){
 	plot(Dscore_mat, type = 'l', main = "GSE70630 oligodendroglioma")
@@ -305,20 +313,22 @@ if(dataSet == "GSE89567"){
 if(dataSet == "GSE103322"){
 	#matplot(Dscore_mat, type='l', pch=1, col=1:10, main="GSE103322 HNC,cor score")
 	#legend("bottomright", legend = colnames(Dscore_mat), col=1:10, pch=1)
-	tmp_mat <- cbind(Dscore_mat[, 2:7], Dscore_mat[,9])
-	matplot(tmp_mat, type='l', pch=1, col=1:7, main="GSE103322 HNC,cor score")
-	leg <- union(colnames(Dscore_mat)[2:7],colnames(Dscore_mat)[9])
-	legend("bottomright", legend = leg, col=1:7, pch=1)
+	tmp_mat <- cbind(Dscore_mat[, 2:7], Dscore_mat[,9:11])
+	matplot(tmp_mat, type='l', pch=1, col=1:9, main="GSE103322 HNC,cor score")
+	leg <- union(colnames(Dscore_mat)[2:7],colnames(Dscore_mat)[9:11])
+	legend("bottomright", legend = leg, col=1:9, pch=1)
 }
 if(dataSet == "GSE75688"){
 	tmp_mat <- cbind(Dscore_mat[,1:2], Dscore_mat[,4:6])
-	matplot(tmp_mat, type='l', pch=1, col=1:5, main="GSE75688 breast,cor score")
+	tmp_mat <- cbind(tmp_mat, Dscore_mat[,8:9])
+	matplot(tmp_mat, type='l', pch=1, col=1:7, main="GSE75688 breast,cor score")
 	leg <- union(colnames(Dscore_mat)[1:2], colnames(Dscore_mat)[4:6])
-	legend("bottomright", legend = leg, col=1:5, pch=1)
+	leg <- union(leg, )
+	legend("bottomright", legend = leg, col=1:7, pch=1)
 }
 if(dataSet == "GSE81861"){
-	matplot(Dscore_mat, type="l", pch=1, col=1:7, main="GSE81861 colorectal,cor score")
-	legend("bottomright", legend = colnames(Dscore_mat), col = 1:7, pch = 1)
+	matplot(Dscore_mat, type="l", pch=1, col=1:9, main="GSE81861 colorectal,cor score")
+	legend("bottomright", legend = colnames(Dscore_mat), col = 1:9, pch = 1)
 }
 
 
