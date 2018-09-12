@@ -323,7 +323,7 @@ if(dataSet == "GSE75688"){
 	tmp_mat <- cbind(tmp_mat, Dscore_mat[,8:9])
 	matplot(tmp_mat, type='l', pch=1, col=1:7, main="GSE75688 breast,cor score")
 	leg <- union(colnames(Dscore_mat)[1:2], colnames(Dscore_mat)[4:6])
-	leg <- union(leg, )
+	leg <- union(leg, colnames(Dscore_mat)[8:9])
 	legend("bottomright", legend = leg, col=1:7, pch=1)
 }
 if(dataSet == "GSE81861"){
