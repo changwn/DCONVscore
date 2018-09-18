@@ -22,10 +22,14 @@ for(i in 1:length(cancer_lib)){
 	data <- timer_result[[2]]
 	signature <- timer_result[[3]]
 	cell_marker <- extract_marker(signature)
+	ss_signature <- unique_signature(signature)
 
-	S <- do_regression(Prop_TIMER, data)
-	bulk_est <- S %*% t(Prop_TIMER)
+	# (1) use whole prop or (2) use cell specific prop
+	#S <- do_regression(Prop_TIMER, data)
+	#bulk_est <- S %*% t(Prop_TIMER)
+	bulk_est <- ss_signature %*% t(Prop_TIMER)
 	rownames(bulk_est) <- rownames(data)	
+
 	#1. direct rmse
 	#rmse_gene <- RMSE_two_mat(data, bulk_est)
 	#2 rmse radio
@@ -33,77 +37,29 @@ for(i in 1:length(cancer_lib)){
 	gene_vira <- row_vira(data)
 	rmse_gene <- rmse_gene / gene_vira
 
-	rmse_list[[length(rmse_list)+1]] <- rmse_gene
-	names(rmse_list)[length(rmse_list)] <- cancer_str 
-}
-
-length(rmse_list)
-for(i in 1:length(rmse_list)){
-	print(length(rmse_list[[i]]))
-	
-}
-
-gene_sig_timer <- c()
-for(i in 1:length(rmse_list)){
-	#if(i == 26 | i == 11 | i == 25) next
-	#if(i == 26) next
-	if(i == 1){
-		gene_sig_timer <- rownames(rmse_list[[i]])
-	}else{
-		gene_sig_timer <- union(gene_sig_timer, rownames(rmse_list[[i]]))	#intersect NOT work
+	#extract marker corresponding rmse
+	cell_rmse <- list()
+	for(i in 1:length(cell_marker)){
+		cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
 	}
+	names(cell_rmse) <- names(cell_marker)
+	#plot
+	#ggred <- 
+	#ggblue <- 
+	pdf_str <- paste(cancer_str, "_timer_cell_rmse_unique.pdf", sep="")
+	#pdf_str <- "Timer_cell_rmse.pdf"
+	pdf(file = pdf_str)
+	for(i in 1:length(cell_marker)){
+		str <- paste(cancer_str, names(cell_rmse)[i], "rmse_unique", sep="-")
+		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightcoral"), names.arg="")
+		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
+	}
+	dev.off()
 
+	#rmse_list[[length(rmse_list)+1]] <- rmse_gene
+	#names(rmse_list)[length(rmse_list)] <- cancer_str 
 }
 
-setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
-#save(rmse_list,gene_sig_timer, file = "TIMER_rmse.RData")
-save(rmse_list,gene_sig_timer, file = "TIMER_rmse_normalize.RData")
-load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score/EPIC_rmse.RData")
-
-# analysis part
-length(intersect(gene_sig_timer,  gene_sig_epic) )
-gene_sig_common <- intersect(gene_sig_timer,  gene_sig_epic)
-
-hit <- list()
-for(i in 1:length(rmse_list)){
-	if(i == 26 | i == 11 | i == 25) next
-	print(length(rmse_list[[i]]))
-	print(length(intersect(gene_sig_common, rownames(rmse_list[[i]]))))
-	hit[[i]] <- intersect(gene_sig_common, rownames(rmse_list[[i]]))
-	names(hit)[i] <- names(rmse_list)[i]
-}
-
-
-
-#plot 
-
-library(ggplot2)
-library(reshape2)
-
-pdf('rmse_timer_epic_normalize.pdf')
-
-for(i in 1:length(hit)){
-
-if(i == 11) next
-v1 <- hit[[i]]
-a <- rmse_list[[i]][v1,]
-b <- rmse_sto[v1, i]
-mmm <- cbind(a, b)
-mmm <- cbind.data.frame(v1, mmm)
-colnames(mmm) <- c('gene_name','timer','epic')
-mmm_plot <- melt(mmm, id.var = 'gene_name' )
-#mmm_plot <- melt(mmm )
-cancer <- names(rmse_list)[i]
-
-myplot <- ggplot(mmm_plot, aes(x = gene_name, y = value, fill = variable)) + 
-  geom_bar(stat = "identity", position = "dodge") + 
-  ggtitle(toupper(cancer) )+
-  theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 45, hjust = 1))
-
-print(myplot)
-}
-
-dev.off()
 
 
 
@@ -489,5 +445,42 @@ extract_marker <- function(aaa){
 	#length(which(mmm[, 5] != 0) )
 	#length(which(mmm[, 6] != 0) )
 
+	#timer
+	B_mark <- rownames(mmm)[which(mmm[, 1] != 0) ]
+	CD4_mark <- rownames(mmm)[which(mmm[, 2] != 0) ]
+	CD8_mark <-rownames(mmm)[which(mmm[, 3] != 0) ]
+	Netro_mark <- rownames(mmm)[which(mmm[, 4] != 0) ]
+	Macro_mark <- rownames(mmm)[which(mmm[, 5] != 0) ]
+	Dc_mark <- rownames(mmm)[which(mmm[, 6] != 0) ]
+
+	return(list(B_mark = B_mark, CD4_mark = CD4_mark, CD8_mark = CD8_mark, Netro_mark = Netro_mark, Macro_mark =Macro_mark, DC_mark = Dc_mark))
+}
+
+unique_signature <- function(aaa){
+
+	cutoff <- 0.05
+	mmm <- matrix(0, nrow(aaa), ncol(aaa))
+	rownames(mmm) <- rownames(aaa)
+	colnames(mmm) <- colnames(aaa)
+	for(i in 1:nrow(aaa)){
+		vv <- matrix(NA, 1, ncol(aaa))
+		vv <- aaa[i, ]
+
+		gene_sd <- sd(vv) * sqrt( (length(vv)-1) / (length(vv))  )
+		gene_mean <- mean(vv)
+
+		#z-score calculation
+		z <- (vv - gene_mean) / gene_sd
+
+		p_yellow <- pnorm(z)
+		p_blue <- 1 - p_yellow
+		#which(p_blue < cutoff)
+		mmm[i, which(p_blue < cutoff)] <- 1
+	}
+
 	return(mmm)
 }
+
+
+
+

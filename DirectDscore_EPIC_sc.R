@@ -17,6 +17,7 @@ d=1
 if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
 if(list_flag == F)	bulk <- tg_data_list[[d]]
 
+bulk <- bulk[intersect(rownames(bulk),TCGA_ensem_annotation[which(TCGA_ensem_annotation[,3]=="protein_coding" & TCGA_ensem_annotation[,4]!="") ,4]),]
 
 commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
 length(commonGene)
@@ -32,14 +33,15 @@ sigGeneEpic <- EPIC::TRef$sigGenes
 sigGeneEpic <- sort(sigGeneEpic)
 
 new_data <- bulk[commonSiga,]
+
 # delete 0 row
 row_sub <- apply(new_data, 1, function(row) all( row == 0)) #return logistic value(T/F)
 Zero <- which(row_sub == T)
 if(length(Zero) == 0) bulk1 <- new_data
 if(length(Zero) > 0)  bulk1 <- new_data[-Zero,]
-# out1 <- EPIC(bulk1, scaleExprs=F)
-#
-colnames(bulk1) <- c(1:ncol(bulk1))
+
+
+colnames(bulk1) <- paste("ssample",c(1:ncol(bulk1)), sep="")
 out1 <- EPIC(bulk1)
 Prop_EPIC <- out1$cellFraction
 
@@ -69,11 +71,36 @@ tumor_score <- sort(ccc[8, ], decreasing = T)
 sets <- list(B_score, F_score, CD4_score, CD8_score, endo_score, macroph_score, NK_score)
 Reduce(union, sets)
 
+# correalation with  matrix V (in svd) of original data
+svd_result <- svd(bulk1)
+u <- svd_result$u
+v <- svd_result$v
+plot(svd(bulk1)$d)
+dim(cor(Prop_EPIC, t(bulk1))  )
+dim(cor(Prop_EPIC, v) )
+
+# we assume the number of cell type will not exceed to 10, thus we just
+# use top 10 basis. (e.g. first 10 column in V)
+cor_with_basis <- cor(Prop_EPIC, v[, 1:10])
+apply(cor_with_basis, 1, max)
 
 
 
+############
+#  test pca
+###########
 
 
+pca_sample <- prcomp(bulk1)
+names(pca_sample)
+dim(pca_sample$rotation)
+dim(pca_sample$x)
+summary(pca_sample)
+
+pca_gene <- prcomp(t(bulk1))
+dim(pca_gene$rotation)
+dim(pca_gene$x)
+summary(pca_gene)
 
 
 
