@@ -1,17 +1,18 @@
 rm(list = ls())
 
+setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
 load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
 
-rmse_sto <- c()
-rmse_list <- list()
+TIMER_rmse <- list()
 #NO laml
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-#cancer_lib <- c("COAD")
+cancer_lib <- c("BRCA","COAD","BRCA_TNBC")
 
-for(i in 1:length(cancer_lib)){
-	cancer_str <- cancer_lib[i]
+for(k in 1:length(cancer_lib)){
+	cancer_str <- cancer_lib[k]
 	cancer_str <- tolower(cancer_str)
 	print(cancer_str)
 
@@ -21,21 +22,32 @@ for(i in 1:length(cancer_lib)){
 	Prop_TIMER <- timer_result[[1]]
 	data <- timer_result[[2]]
 	signature <- timer_result[[3]]
-	cell_marker <- extract_marker(signature)
+	cell_marker <- extract_marker(signature, method = "TIMER")
 	ss_signature <- unique_signature(signature)
 
-	# (1) use whole prop or (2) use cell specific prop
+	# (1) use whole prop or (2) use cell specific prop or (3)
+	# (1){
 	#S <- do_regression(Prop_TIMER, data)
 	#bulk_est <- S %*% t(Prop_TIMER)
+	#}
+	#(2){
 	bulk_est <- ss_signature %*% t(Prop_TIMER)
 	rownames(bulk_est) <- rownames(data)	
+	#}
+	# 3{
+
+	#}
 
 	#1. direct rmse
 	#rmse_gene <- RMSE_two_mat(data, bulk_est)
 	#2 rmse radio
-	rmse_gene <- RMSE_two_mat(data, bulk_est)
-	gene_vira <- row_vira(data)
-	rmse_gene <- rmse_gene / gene_vira
+	#{
+	#rmse_gene <- RMSE_two_mat(data, bulk_est)
+	#gene_vira <- row_vira(data)
+	#rmse_gene <- rmse_gene / gene_vira
+	#}
+	rmse_gene <- R2_two_mat(bulk_est, data)	# Note! estimate in the front 
+
 
 	#extract marker corresponding rmse
 	cell_rmse <- list()
@@ -46,19 +58,49 @@ for(i in 1:length(cancer_lib)){
 	#plot
 	#ggred <- 
 	#ggblue <- 
-	pdf_str <- paste(cancer_str, "_timer_cell_rmse_unique.pdf", sep="")
+	#pdf_str <- paste(cancer_str, "_timer_cell_rmse_unique.pdf", sep="")
 	#pdf_str <- "Timer_cell_rmse.pdf"
-	pdf(file = pdf_str)
+	plot_flag = F
+	if(plot_flag == T){
+	#pdf(file = pdf_str)
+	pdf("timer_1111.pdf")
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "rmse_unique", sep="-")
 		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightcoral"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
 	dev.off()
+	}
 
-	#rmse_list[[length(rmse_list)+1]] <- rmse_gene
-	#names(rmse_list)[length(rmse_list)] <- cancer_str 
+	TIMER_rmse[[k]] <- cell_rmse
+	names(TIMER_rmse)[k] <- cancer_str
+	
 }
+
+save(TIMER_rmse, file = "TIMER_333_list.RData")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -299,10 +341,6 @@ TIMER <- function(cc = cancer_str){
 
 }
 
-
-
-
-
 #--------------------------------------------------------------
 
 filter_gene_name <- function(data_t){
@@ -364,6 +402,11 @@ RMSE_two_vector <- function(a, b){
 	return(rmse)
 }
 
+R2_two_vector <- function(predict, actual){
+	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
+	return(R2)
+}
+
 RMSE_one_mat <- function(aaa){
 	
 	n_gene <- nrow(aaa)
@@ -389,16 +432,50 @@ RMSE_two_mat <- function(aaa, bbb){
 	return(vc)
 }
 
+R2_two_mat <- function(aaa, bbb){
+	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
+	for(i in 1:n_gene){
+		tmp_a <- aaa[i, ]
+		tmp_b <- bbb[i, ]
+		vc[i] <- R2_two_vector(tmp_a, tmp_b)
+	}
+	rownames(vc) <- rownames(aaa)
+	return(vc)
+}
+
 do_regression <- function(proportion=Prop_EPIC, data=bulk1){
 	P_2nd <- c()
 	n_gene <- nrow(data)
 	g_sample <- ncol(data)
 	for(i in 1:n_gene){
-		coeff <- getFractions.Abbas(proportion, t(data)[, i])
+		coeff <- (proportion, t(data)[, i])
 		P_2nd <- rbind(P_2nd, coeff)
 	}
 	return(P_2nd)
 }
+
+ do_regression_unique <- function(proportion=Prop_EPIC, data=bulk1, indicate=matrix){
+ 	print("")
+ 	if(nrow(data) != nrow(indicate)) stop("number of gene in indicate NOT match!")
+ 	if(ncol(proportion) != ncol(indicate)) stop("number of sample in indicate NOT match!")
+ 	P_2nd <- matrix(0, nrow(indicate), ncol(indicate))
+ 	rownames(P_2nd) <- rownames(indicate)
+	n_gene <- nrow(data)
+	g_sample <- ncol(data)	
+	for(i in 1:n_gene){
+		cell <- which(indicate[i, ] == 1)
+		if(length(cell) > 1) stop("return 2 cell type!")
+	 	pp <- proportion[, cell]
+		y <- data[i, ]
+		ddd <- cbind(pp, y)
+		ddd <- as.data.frame(ddd)
+		coeff <- lm(pp~y + 0, ddd)
+		P_2nd[i, cell] <- coeff[[1]]
+	}	
+	return(P_2nd)
+ }
 
 row_vira <- function(aaa){
 	n_gene <- nrow(aaa)
@@ -410,7 +487,7 @@ row_vira <- function(aaa){
 	return(vc)
 }
 
-extract_marker <- function(aaa){
+extract_marker <- function(aaa, method){
 	# mmmm is a list to store cell marker, the name of each element is cell type,
 	# 
 	cutoff <- 0.05
@@ -445,20 +522,51 @@ extract_marker <- function(aaa){
 	#length(which(mmm[, 5] != 0) )
 	#length(which(mmm[, 6] != 0) )
 
-	#timer
-	B_mark <- rownames(mmm)[which(mmm[, 1] != 0) ]
-	CD4_mark <- rownames(mmm)[which(mmm[, 2] != 0) ]
-	CD8_mark <-rownames(mmm)[which(mmm[, 3] != 0) ]
-	Netro_mark <- rownames(mmm)[which(mmm[, 4] != 0) ]
-	Macro_mark <- rownames(mmm)[which(mmm[, 5] != 0) ]
-	Dc_mark <- rownames(mmm)[which(mmm[, 6] != 0) ]
+	if(method == "TIMER"){
+		B_mark <- rownames(mmm)[which(mmm[, 1] != 0) ]
+		CD4_mark <- rownames(mmm)[which(mmm[, 2] != 0) ]
+		CD8_mark <-rownames(mmm)[which(mmm[, 3] != 0) ]
+		Netro_mark <- rownames(mmm)[which(mmm[, 4] != 0) ]
+		Macro_mark <- rownames(mmm)[which(mmm[, 5] != 0) ]
+		Dc_mark <- rownames(mmm)[which(mmm[, 6] != 0) ]
+	}
+	#epic
+	if(method == "EPIC"){
+		B_mark <- rownames(mmm)[which(mmm[, 1] != 0) ]
+		CAFs_mark <- rownames(mmm)[which(mmm[, 2] != 0) ]
+		CD4_mark <-rownames(mmm)[which(mmm[, 3] != 0) ]
+		CD8_mark <- rownames(mmm)[which(mmm[, 4] != 0) ]
+		endoth_mark <- rownames(mmm)[which(mmm[, 5] != 0) ]
+		Macro_mark <- rownames(mmm)[which(mmm[, 6] != 0) ]
+		NK_mark <- rownames(mmm)[which(mmm[, 7] != 0) ]
+	}
+	#ciber
+	if(method == "CIBER"){
+		specific_marker <- list()
+		for(i in 1:ncol(mmm)){
+			specific_marker[[i]] <- rownames(mmm)[which(mmm[, i] != 0) ]
+			names(specific_marker)[i] <- colnames(mmm)[i]
+		}
+	}
 
-	return(list(B_mark = B_mark, CD4_mark = CD4_mark, CD8_mark = CD8_mark, Netro_mark = Netro_mark, Macro_mark =Macro_mark, DC_mark = Dc_mark))
+
+	#return
+	if(method == "TIMER"){
+		return(list(B_mark = B_mark, CD4_mark = CD4_mark, CD8_mark = CD8_mark, Netro_mark = Netro_mark, Macro_mark =Macro_mark, DC_mark = Dc_mark))
+	}
+	if(method == "EPIC"){
+		return(list(B_mark = B_mark, CAFs_mark = CAFs_mark, CD4_mark = CD4_mark, CD8_mark = CD8_mark, endoth_mark =endoth_mark, Macro_mark = Macro_mark, NK_mark=NK_mark))
+	}
+	if(method == "CIBER"){
+		return(specific_marker)
+	}
+
+
 }
 
-unique_signature <- function(aaa){
+unique_signature <- function(aaa, cutoff=0.05){
 
-	cutoff <- 0.05
+	#cutoff <- 0.05
 	mmm <- matrix(0, nrow(aaa), ncol(aaa))
 	rownames(mmm) <- rownames(aaa)
 	colnames(mmm) <- colnames(aaa)

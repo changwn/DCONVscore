@@ -1,5 +1,7 @@
 rm(list = ls())
 
+setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
 load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
 
@@ -13,14 +15,15 @@ LM22 <- LM22[,-1]
 LM22 <- as.matrix(LM22)
 
 
+CIBER_rmse <- list()
+
 #NO laml
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-#cancer_lib <- c("BLCA","COAD")
+cancer_lib <- c("BRCA","COAD","BRCA_TNBC")
 
-
-for(i in 1:length(cancer_lib)){
-	cancer_str <- cancer_lib[i]
+for(k in 1:length(cancer_lib)){
+	cancer_str <- cancer_lib[k]
 	cancer_str <- tolower(cancer_str)
 	print(cancer_str)
 
@@ -59,9 +62,12 @@ for(i in 1:length(cancer_lib)){
 	#1. direct rmse
 	#rmse_gene <- RMSE_two_mat(data, bulk_est)
 	#2 rmse radio
-	rmse_gene <- RMSE_two_mat(data, bulk_est)
-	gene_vira <- row_vira(data)
-	rmse_gene <- rmse_gene / gene_vira
+	#{
+	#rmse_gene <- RMSE_two_mat(data, bulk_est)
+	#gene_vira <- row_vira(data)
+	#rmse_gene <- rmse_gene / gene_vira
+	#}
+	rmse_gene <- R2_two_mat(bulk_est, data)
 
 	#extract marker corresponding rmse
 	cell_rmse <- list()
@@ -72,16 +78,39 @@ for(i in 1:length(cancer_lib)){
 	#plot
 	#ggred <- 
 	#ggblue <- 
-	pdf_str <- paste(cancer_str, "_ciber_cell_rmse.pdf", sep="")
+	plot_flag <- F
+	if(plot_flag == T){
+	pdf_str <- paste(cancer_str, "_ciber_cell_R2.pdf", sep="")
 	#pdf_str <- "Timer_cell_rmse.pdf"
 	pdf(file = pdf_str)
 	for(i in 1:length(cell_marker)){
-		str <- paste(cancer_str, names(cell_rmse)[i], "rmse", sep="-")
+		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
 		pp <- barplot(cell_rmse[[i]], main=str, col = c("darkseagreen3"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
 	dev.off()
+	}
+
+	CIBER_rmse[[k]] <- cell_rmse
+	names(CIBER_rmse)[k] <- cancer_str
+
 }
+
+save(CIBER_rmse, file = "CIBER_333_list.RData")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -156,6 +185,13 @@ RMSE_two_vector <- function(a, b){
 	return(rmse)
 }
 
+library("caret")
+R2_two_vector <- function(predict, actual){
+	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
+	return(R2)
+}
+
+
 RMSE_one_mat <- function(aaa){
 	
 	n_gene <- nrow(aaa)
@@ -176,6 +212,19 @@ RMSE_two_mat <- function(aaa, bbb){
 		tmp_a <- aaa[i, ]
 		tmp_b <- bbb[i, ]
 		vc[i] <- RMSE_two_vector(tmp_a, tmp_b)
+	}
+	rownames(vc) <- rownames(aaa)
+	return(vc)
+}
+
+R2_two_mat <- function(aaa, bbb){
+	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
+	for(i in 1:n_gene){
+		tmp_a <- aaa[i, ]
+		tmp_b <- bbb[i, ]
+		vc[i] <- R2_two_vector(tmp_a, tmp_b)
 	}
 	rownames(vc) <- rownames(aaa)
 	return(vc)

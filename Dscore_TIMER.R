@@ -408,6 +408,7 @@ RMSE_two_vector <- function(a, b){
 	return(rmse)
 }
 
+
 RMSE_one_mat <- function(aaa){
 	
 	n_gene <- nrow(aaa)

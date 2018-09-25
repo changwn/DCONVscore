@@ -12,7 +12,8 @@ EPIC_rmse <- list()
 #remove LAML
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD","BRCA_TNBC")
+cancer_lib <- c("BLCA","COAD")
+
 for(k in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[k]
 	print(cancer_str)
@@ -33,11 +34,6 @@ for(k in 1:length(cancer_lib)){
 	if(length(Zero) == 0) bulk <- bulk
 	if(length(Zero) > 0)  bulk <- bulk[-Zero,]
 
-#----------------------
-# seed <- MR? 98 genes
-# pool <- high correlation
-#----------------------
-
 	commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
 	length(commonGene)
 	length(EPIC::TRef$sigGenes)
@@ -50,21 +46,36 @@ for(k in 1:length(cancer_lib)){
 	# the order in new_data_est is mess
 	sigGeneEpic <- sort(sigGeneEpic)
 
-	bulk1 <- bulk[commonSiga,]
+	signature <- EPIC::TRef$refProfiles[commonSiga,]
+	ss_signature <- unique_signature(signature, 0.05)
+
+	row_sub <- apply(ss_signature, 1, function(row) all( row == 0)) #return logistic value(T/F)
+	Zero <- which(row_sub == T)
+	print(length(Zero))
+	if(length(Zero) == 0) ss_signature <- ss_signature
+	if(length(Zero) > 0)  ss_signature <- ss_signature[-Zero,]
+	ss_gene <- rownames(ss_signature)
+
+	bulk1 <- bulk[ss_gene,]
 
 	#colnames(bulk1) <- paste("ssample",c(1:ncol(bulk1)), sep="")
 	out1 <- EPIC(bulk1)
 	print("finish EPIC")
-	Prop_EPIC <- out1$cellFraction
-	signature <- EPIC::TRef$refProfiles[commonSiga,]
-	cell_marker <- extract_marker(signature,method="EPIC")
-	ss_signature <- unique_signature(signature)
+	Prop_EPIC <- out1$cellFraction[,1:7]
 
 	# (1) use whole prop or (2) use cell specific prop	
+	#1{
 	#S <- do_regression(Prop_EPIC, bulk1)		#!: use small data do regression
 	#bulk_est <- S %*% t(Prop_EPIC)
-	bulk_est <- ss_signature %*% t(Prop_EPIC[,1:7]) 
-	rownames(bulk_est) <- rownames(bulk1)	
+	#}
+	#2{
+	#bulk_est <- ss_signature %*% t(Prop_EPIC[,1:7]) 
+	#rownames(bulk_est) <- rownames(bulk1)
+	#}
+	#3{
+	Sc <- do_regression_unique(Prop_EPIC, bulk1, ss_signature)
+	bulk_est <- Sc %*% t(Prop_EPIC)	
+	#}	
 
 	#1 direct rmse
 	#rmse_gene <- RMSE_two_mat(bulk1, bulk_est)
@@ -82,25 +93,71 @@ for(k in 1:length(cancer_lib)){
 		cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
 	}
 	names(cell_rmse) <- names(cell_marker)
-	#plot
-	#ggred <- 
-	#ggblue <- 
-	#pdf_str <- paste(cancer_str, "_epic_cell_rmse_unique.pdf", sep="")
-	#pdf_str <- "Timer_cell_rmse.pdf"
-	#pdf(file = pdf_str)
-	flag_plot <- F
-	if(flag_plot == T){
+
+	flag_plot <- T
+if(flag_plot == T){
+	pdf_str <- paste(cancer_str, "_epic_cell_R2_unique.pdf", sep="")
+	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
-		str <- paste(cancer_str, names(cell_rmse)[i], "rmse_unique", sep="-")
+		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
 		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
-	#dev.off()
+	dev.off()
+
+}	
+
+
+############### NMF
+	data_t = log2(bulk + 1)
+	NMF_indi_all = ss_signature
+
+X1=data_t[match(rownames(NMF_indi_all),rownames(data_t)),]###take only those rows that correspond to rows in NMF_indi_all
+K=ncol(NMF_indi_all)
+indiS=1-NMF_indi_all
+###########
+
+###########Parameter settings
+theta=0.5 ##penalty parameter for constraints on NMF_indi_all
+indiS_method="nonprdescent" ##the updating scheme for the structural constraints
+iter=2000
+alpha=beta=gamma=roh=0
+roh=gamma=0.0001
+UM=VM=NULL
+qq=1
+epslog=6
+nPerm=2
+initial_U=initial_V=NULL
+mscale=1
+###########
+
+
+library(NMF)
+set.seed(123456)
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
+set.seed(123456)
+###########Run the constrained qNMF
+ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
+#names(ttt1)
+###########
+U=ttt1$U[,c(1,2,4,3)]
+V=ttt1$V[,c(1,2,4,3)]
+U=ttt1$U
+V=ttt1$V
+
+	rmse_gene <- R2_two_mat(U %*% t(V), X1)
+
+	#extract marker corresponding rmse
+	cell_rmse <- list()
+	for(i in 1:length(cell_marker)){
+		cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
 	}
+	names(cell_rmse) <- names(cell_marker)
 
 	flag_plot <- T
 	if(flag_plot == T){
-	pdf_str <- paste(cancer_str, "_epic_cell_R2_unique.pdf", sep="")
+	pdf_str <- paste(cancer_str, "_ICAD_cell_R2_unique.pdf", sep="")
 	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
@@ -111,20 +168,9 @@ for(k in 1:length(cancer_lib)){
 	}
 
 
-	EPIC_rmse[[k]] <- cell_rmse
-	names(EPIC_rmse)[k] <- cancer_str
 
 }	# for
 
-save(EPIC_rmse, file = "EPIC_333_list.RData")
-
-
-
-
-
-
-#gene_Smean <- mean(rmse_gene)		#init mean score
-#gene_Smedian <- median(rmse_gene)	#init median score
 
 
 
@@ -136,104 +182,16 @@ save(EPIC_rmse, file = "EPIC_333_list.RData")
 
 
 
-#-----------------------------
-#function
-
-getFractions.Abbas <- function(XX,YY,w=NA){
-  ss.remove=c()
-  ss.names=colnames(XX)
-  while(T){
-    if(length(ss.remove)==0)tmp.XX=XX else{
-      if(is.null(ncol(tmp.XX)))return(rep(0,ncol(XX)))
-      tmp.XX=tmp.XX[,-ss.remove]
-    }
-    if(length(ss.remove)>0){
-      ss.names=ss.names[-ss.remove]
-      if(length(ss.names)==0)return(rep(0,ncol(XX)))
-    }
-    if(is.na(w[1]))tmp=lsfit(tmp.XX,YY,intercept=F) else tmp=lsfit(tmp.XX,YY,w,intercept=F)
-    if(is.null(ncol(tmp.XX)))tmp.beta=tmp$coefficients[1] else tmp.beta=tmp$coefficients[1:(ncol(tmp.XX)+0)]
-    if(min(tmp.beta>0))break
-    ss.remove=which.min(tmp.beta)
-  }
-  tmp.F=rep(0,ncol(XX))
-  names(tmp.F)=colnames(XX)
-  tmp.F[ss.names]=tmp.beta
-  return(tmp.F)
-}
-
-RMSE_one_vector <- function(a){
-	rmse <- sqrt(sum(a^2)/length(a))
-	return(rmse)
-}
-
-RMSE_two_vector <- function(a, b){
-	diff <- a - b
-	rmse <- sqrt(sum(diff^2)/length(diff))
-	return(rmse)
-}
-
-library("caret")
-R2_two_vector <- function(predict, actual){
-	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
-	return(R2)
-}
 
 
 
-RMSE_one_mat <- function(aaa){
-	
-	n_gene <- nrow(aaa)
-	vc <- matrix(NA, n_gene, 1)
-	for(i in 1:n_gene){
-		tmp_a <- aaa[i, ]
-		vc[i] <- RMSE_one_vector(tmp_a)
 
-	}
-	rownames(vc) <- rownames(aaa)
-	
-	return(vc)
-}
 
-RMSE_two_mat <- function(aaa, bbb){
-	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
-	n_gene <- nrow(aaa)
-	vc <- matrix(NA, n_gene, 1)
-	for(i in 1:n_gene){
-		tmp_a <- aaa[i, ]
-		tmp_b <- bbb[i, ]
-		vc[i] <- RMSE_two_vector(tmp_a, tmp_b)
 
-	}
-	rownames(vc) <- rownames(aaa)
-	
-	return(vc)
-}
 
-R2_two_mat <- function(aaa, bbb){
-	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
-	n_gene <- nrow(aaa)
-	vc <- matrix(NA, n_gene, 1)
-	for(i in 1:n_gene){
-		tmp_a <- aaa[i, ]
-		tmp_b <- bbb[i, ]
-		vc[i] <- R2_two_vector(tmp_a, tmp_b)
-	}
-	rownames(vc) <- rownames(aaa)
-	return(vc)
-}
 
-do_regression <- function(proportion=Prop_EPIC, data=bulk1){
-	P_2nd <- c()
-	n_gene <- nrow(data)
-	g_sample <- ncol(data)
-	for(i in 1:n_gene){
-		coeff <- getFractions.Abbas(proportion, t(data)[, i])
-		P_2nd <- rbind(P_2nd, coeff)
-	}
+#--------------------------------------------------------
 
-	return(P_2nd)
-}
 
 filter_gene_name <- function(data_t){
 
@@ -261,19 +219,9 @@ return(data_ttt)
 
 }
 
-row_vira <- function(aaa){
-	n_gene <- nrow(aaa)
-	vc <- matrix(NA, n_gene, 1)
-	for(i in 1:n_gene){
-		ave <- mean(aaa[i, ])
-		vc[i] <- sqrt(sum( (aaa[i, ] - ave)^2 ) )
-
-	}
-	return(vc)
-}
 
 
-extract_marker <- function(aaa, method="EPIC"){
+extract_marker <- function(aaa, method){
 	# mmmm is a list to store cell marker, the name of each element is cell type,
 	# 
 	cutoff <- 0.05
@@ -350,7 +298,8 @@ extract_marker <- function(aaa, method="EPIC"){
 
 }
 
-unique_signature <- function(aaa, cutoff=0.05){
+
+unique_signature <- function(aaa, cutoff = 0.05){
 
 	#cutoff <- 0.05
 	mmm <- matrix(0, nrow(aaa), ncol(aaa))
@@ -373,5 +322,67 @@ unique_signature <- function(aaa, cutoff=0.05){
 	}
 
 	return(mmm)
+}
+
+
+RMSE_one_vector <- function(a){
+	rmse <- sqrt(sum(a^2)/length(a))
+	return(rmse)
+}
+
+RMSE_two_vector <- function(a, b){
+	diff <- a - b
+	rmse <- sqrt(sum(diff^2)/length(diff))
+	return(rmse)
+}
+
+library("caret")
+R2_two_vector <- function(predict, actual){
+	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
+	return(R2)
+}
+
+
+
+RMSE_one_mat <- function(aaa){
+	
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
+	for(i in 1:n_gene){
+		tmp_a <- aaa[i, ]
+		vc[i] <- RMSE_one_vector(tmp_a)
+
+	}
+	rownames(vc) <- rownames(aaa)
+	
+	return(vc)
+}
+
+RMSE_two_mat <- function(aaa, bbb){
+	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
+	for(i in 1:n_gene){
+		tmp_a <- aaa[i, ]
+		tmp_b <- bbb[i, ]
+		vc[i] <- RMSE_two_vector(tmp_a, tmp_b)
+
+	}
+	rownames(vc) <- rownames(aaa)
+	
+	return(vc)
+}
+
+R2_two_mat <- function(aaa, bbb){
+	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
+	for(i in 1:n_gene){
+		tmp_a <- aaa[i, ]
+		tmp_b <- bbb[i, ]
+		vc[i] <- R2_two_vector(tmp_a, tmp_b)
+	}
+	rownames(vc) <- rownames(aaa)
+	return(vc)
 }
 

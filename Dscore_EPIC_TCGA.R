@@ -9,7 +9,7 @@ load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.
 rmse_sto <- c()
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-#cancer_lib <- c("COAD")
+cancer_lib <- c("COAD")
 for(i in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[i]
 	print(cancer_str)
