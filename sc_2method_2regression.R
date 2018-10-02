@@ -1,88 +1,316 @@
 rm(list = ls())
-
 setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+
+
+# 4. GSE103322 HNC
+dataSet <- "GSE103322"
+list_flag <- T
+load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE103322_tg_data_list.RData")
+tg_data_list <- GSE103322_tg_data_list 
+Cell_Prop <- Cell_Prop_GSE103322
+
+# set parameter
+d=1
+if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
+if(list_flag == F)	bulk <- tg_data_list[[d]]
+if(list_flag == T) true_p <- tg_data_list[[d]][[2]]
+colnames(bulk) <- paste("ss",c(1:ncol(bulk)), sep="" )
+colnames(true_p) <- paste("ss", c(1:ncol(true_p)), sep="")
+
+#prepare high correlation data
+ccc <- cor(t(bulk), t(true_p))
+dim(ccc)
+colnames(ccc)
+B_mark <- names(ccc[order(-ccc[,3])[1:150],3])
+T_mark <- names(ccc[order(-ccc[,2])[1:150],2])
+Macro_mark <- names(ccc[order(-ccc[,8])[1:150],8])
+Fibro_mark <- names(ccc[order(-ccc[,5])[1:150],5])
+Epith_mark <- names(ccc[order(-ccc[,7])[1:150],7])
+Mast_mark <- names(ccc[order(-ccc[,9])[1:150],9])
+
+mark6 <- c(B_mark, T_mark, Macro_mark, Fibro_mark, Epith_mark, Mast_mark)
+
+XXX <- bulk[mark6, ]
+C <- matrix(0, nrow(XXX), 6)
+rownames(C) <- rownames(XXX)
+colnames(C) <- c("B","T","Macro","Fibro","EPith","Mast")
+for(i in 1:ncol(C))
+{	
+	left <- 150*(i-1)+1
+	right <- 150*i
+	C[left:right, i] <- rep(1, 150)
+
+}
+
+bulk = XXX
+ss_signature = C
+
+#-------------------------------------------------run epic------------------------------
+library(EPIC)
+
 
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
 load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
 
-TIMER_rmse <- list()
-#NO laml
-cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LGG", "LIHC", "LUAD", 
-				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD")
+EPIC_rmse <- list()
+cancer_str <- dataSet
 
-for(k in 1:length(cancer_lib)){
-	cancer_str <- cancer_lib[k]
-	cancer_str <- tolower(cancer_str)
-	print(cancer_str)
+# just use gene which can produce protein
+bulk <- bulk[intersect(rownames(bulk),TCGA_ensem_annotation[which(TCGA_ensem_annotation[,3]=="protein_coding" & TCGA_ensem_annotation[,4]!="") ,4]),]
 
-	timer_result <- TIMER(cancer_str)
-	#names(timer_result)
-	#dim(timer_result[[1]])
-	Prop_TIMER <- timer_result[[1]]
-	data <- timer_result[[2]]
-	signature <- timer_result[[3]]
-	cell_marker <- extract_marker(signature, method = "TIMER")
-	ss_signature <- unique_signature(signature)
-	ss_signature <- rm_zero_row(ss_signature)
-	data <- data[rownames(ss_signature), ]
+# remove whole zero row
+bulk <- rm_zero_row(bulk)
 
-	# (1) use whole prop or (2) use cell specific prop or (3)
-	# (1){
-	#S <- do_regression(Prop_TIMER, data)
-	#bulk_est <- S %*% t(Prop_TIMER)
-	#}
-	#(2){
-	#bulk_est <- ss_signature %*% t(Prop_TIMER)
-	#rownames(bulk_est) <- rownames(data)	
-	#}
-	# 3{
-	SS <- do_regression_unique(Prop_TIMER, data, ss_signature)
-	bulk_est <- SS %*% t(Prop_TIMER)	
-	#}
+commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
+length(commonGene)
+length(EPIC::TRef$sigGenes)
+length(intersect(commonGene,EPIC::TRef$sigGenes))
+commonSiga <- intersect(commonGene, EPIC::TRef$sigGenes)
+commonSiga <- sort(commonSiga)
+length(commonSiga)
 
-	#a. direct rmse
-	#rmse_gene <- RMSE_two_mat(data, bulk_est)
-	#b. rmse radio
-	#{
-	#rmse_gene <- RMSE_two_mat(data, bulk_est)
-	#gene_vira <- row_vira(data)
-	#rmse_gene <- rmse_gene / gene_vira
-	#}
-	#c. R2
-	#{
-	rmse_gene <- R2_two_mat(bulk_est, data)	# Note! estimate in the front 
-	#}
+sigGeneEpic <- EPIC::TRef$sigGenes
+# the order in new_data_est is mess
+sigGeneEpic <- sort(sigGeneEpic)
 
-	#extract marker corresponding rmse
-	cell_rmse <- list()
+bulk1 <- bulk[commonSiga,]
+
+signature <- EPIC::TRef$refProfiles[commonSiga,]
+cell_marker <- extract_marker(signature,method="EPIC")
+ss_signature <- unique_signature(signature, 0.05)
+ss_signature <- rm_zero_row(ss_signature)
+bulk1 <- bulk1[rownames(ss_signature), ]
+
+out1 <- EPIC(bulk1)
+print("finish EPIC")
+Prop_EPIC <- out1$cellFraction[,1:7]
+
+# do regression in order to get SS, then get bulk_est
+SS <- do_regression_unique(Prop_EPIC, bulk1, ss_signature)
+bulk_est <- SS %*% t(Prop_EPIC)
+
+#R2
+rmse_gene <- R2_two_mat(bulk_est, bulk1)
+
+cell_rmse <- list()
+for(i in 1:length(cell_marker)){
+	cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
+}
+names(cell_rmse) <- names(cell_marker)
+
+flag_plot <- T
+if(flag_plot == T){
+	pdf_str <- paste(cancer_str, "_epic_cell_R2.pdf", sep="")
+	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
-		cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
-	}
-	names(cell_rmse) <- names(cell_marker)
-	#plot
-	#ggred <- 
-	#ggblue <- 
-	#
-	#pdf_str <- "Timer_cell_rmse.pdf"
-	plot_flag = T
-	if(plot_flag == T){
-	pdf_str <- paste(cancer_str, "_timer_cell_rmse_unique.pdf", sep="")
-	pdf(file = pdf_str)
-	for(i in 1:length(cell_marker)){
-		str <- paste(cancer_str, names(cell_rmse)[i], "R2_unique", sep="-")
-		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightcoral"), names.arg="")
+		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
+		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
 	dev.off()
-	}
-
-	TIMER_rmse[[k]] <- cell_rmse
-	names(TIMER_rmse)[k] <- cancer_str
-	
 }
 
-save(TIMER_rmse, file = "TIMER_333_list.RData")
+EPIC_rmse[[1]] <- cell_rmse
+names(EPIC_rmse)[1] <- cancer_str
+
+save(EPIC_rmse, file = "EPIC_103322_list.RData")
+
+#----------------------------ICTD------------------------------------------
+
+library(EPIC)
+load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
+load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
+
+ICTD_rmse <- list()
+cancer_str <- dataSet
+
+# just use gene which can produce protein
+bulk <- bulk[intersect(rownames(bulk),TCGA_ensem_annotation[which(TCGA_ensem_annotation[,3]=="protein_coding" & TCGA_ensem_annotation[,4]!="") ,4]),]
+
+# remove whole zero row
+bulk <- rm_zero_row(bulk)
+
+commonGene <- intersect(rownames(bulk),rownames(EPIC::TRef$refProfiles))
+length(commonGene)
+length(EPIC::TRef$sigGenes)
+length(intersect(commonGene,EPIC::TRef$sigGenes))
+commonSiga <- intersect(commonGene, EPIC::TRef$sigGenes)
+commonSiga <- sort(commonSiga)
+length(commonSiga)
+
+sigGeneEpic <- EPIC::TRef$sigGenes
+# the order in new_data_est is mess
+sigGeneEpic <- sort(sigGeneEpic)
+
+signature <- EPIC::TRef$refProfiles[commonSiga,]
+cell_marker <- extract_marker(signature,method="EPIC")
+ss_signature <- unique_signature(signature, 0.05)
+
+ss_signature <- rm_zero_row(ss_signature)
+
+ss_gene <- rownames(ss_signature)
+
+############### NMF
+data_t = log2(bulk + 1)			#NMF input 1
+NMF_indi_all = ss_signature		#NMF input 2
+
+X1=data_t[match(rownames(NMF_indi_all),rownames(data_t)),]###take only those rows that correspond to rows in NMF_indi_all
+K=ncol(NMF_indi_all)
+indiS=1-NMF_indi_all
+###########
+
+###########Parameter settings
+theta=5 ##penalty parameter for constraints on NMF_indi_all
+indiS_method="nonprdescent" ##the updating scheme for the structural constraints
+iter=2000
+alpha=beta=gamma=roh=0
+roh=gamma=0.0001
+UM=VM=NULL
+qq=1
+epslog=6
+nPerm=2
+initial_U=initial_V=NULL
+mscale=1
+###########
+
+
+library(NMF)
+set.seed(123456)
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
+set.seed(123456)
+###########Run the constrained qNMF
+ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
+#names(ttt1)
+###########
+U=ttt1$U[,c(1,2,4,3)]
+V=ttt1$V[,c(1,2,4,3)]
+U=ttt1$U
+V=ttt1$V
+
+SS <- do_regression_unique(V, X1, ss_signature)
+bulk_est <- SS %*% t(V)
+
+rmse_gene <- R2_two_mat(bulk_est, X1)
+
+#extract marker corresponding rmse
+cell_rmse <- list()
+for(i in 1:length(cell_marker)){
+	cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
+}
+names(cell_rmse) <- names(cell_marker)
+
+
+flag_plot <- T
+if(flag_plot == T){
+	pdf_str <- paste(cancer_str, "_ICAD_cell_R2.pdf", sep="")
+	pdf(file = pdf_str)	
+	for(i in 1:length(cell_marker)){
+		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
+		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
+		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
+	}
+	dev.off()
+}
+
+ICTD_rmse[[1]] <- cell_rmse
+names(ICTD_rmse)[1] <- cancer_str
+
+save(ICTD_rmse, file = "ICTD_103322_list.RData")
+
+
+#--------------------------ICTD-self-marker-----------------------------------
+
+
+load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
+load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
+
+ICTD_rmse <- list()
+cancer_str <- dataSet
+
+# just use gene which can produce protein
+bulk <- bulk[intersect(rownames(bulk),TCGA_ensem_annotation[which(TCGA_ensem_annotation[,3]=="protein_coding" & TCGA_ensem_annotation[,4]!="") ,4]),]
+
+# remove whole zero row
+bulk <- rm_zero_row(bulk)
+ss_signature <- ss_signature[rownames(bulk),]
+cell_marker <- extract_marker_ICTD(ss_signature)
+
+
+############### NMF
+data_t = log2(bulk + 1)			#NMF input 1
+NMF_indi_all = ss_signature		#NMF input 2
+
+X1=data_t[match(rownames(NMF_indi_all),rownames(data_t)),]###take only those rows that correspond to rows in NMF_indi_all
+K=ncol(NMF_indi_all)
+indiS=1-NMF_indi_all
+###########
+
+###########Parameter settings
+theta=5 ##penalty parameter for constraints on NMF_indi_all
+indiS_method="nonprdescent" ##the updating scheme for the structural constraints
+iter=2000
+alpha=beta=gamma=roh=0
+roh=gamma=0.0001
+UM=VM=NULL
+qq=1
+epslog=6
+nPerm=2
+initial_U=initial_V=NULL
+mscale=1
+###########
+
+
+library(NMF)
+set.seed(123456)
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
+set.seed(123456)
+###########Run the constrained qNMF
+ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
+#names(ttt1)
+###########
+U=ttt1$U[,c(1,2,4,3)]
+V=ttt1$V[,c(1,2,4,3)]
+U=ttt1$U
+V=ttt1$V
+
+#1
+SS <- do_regression_unique(V, X1, ss_signature)
+bulk_est <- SS %*% t(V)
+rmse_gene <- R2_two_mat(bulk_est, X1)
+
+#2
+SS <- correspond_matrix(U, ss_signature)
+bulk_est <- SS %*% t(V)
+#bulk_est <- U %*% t(V)
+rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
+
+
+#extract marker corresponding rmse
+cell_rmse <- list()
+for(i in 1:length(cell_marker)){
+	cell_rmse[[i]] <- rmse_gene[cell_marker[[i]], ]
+}
+names(cell_rmse) <- names(cell_marker)
+
+
+flag_plot <- T
+if(flag_plot == T){
+	pdf_str <- paste(cancer_str, "_ICAD_cell_R2_directRegression.pdf", sep="")
+	pdf(file = pdf_str)	
+	for(i in 1:length(cell_marker)){
+		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
+		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
+		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
+	}
+	dev.off()
+}
+
+ICTD_rmse[[1]] <- cell_rmse
+names(ICTD_rmse)[1] <- cancer_str
+
+save(ICTD_rmse, file = "ICTD_103322_list.RData")
 
 
 
@@ -111,7 +339,65 @@ save(TIMER_rmse, file = "TIMER_333_list.RData")
 
 
 
-#-----------------------------------------------------------------------functions
+
+
+
+
+
+##########################################################
+ #
+ #    function
+ #########################################################
+
+filter_gene_name <- function(data_t){
+# 1. extra special row
+loca <- c()
+for(i in 1:nrow(data_t)){
+	tmp <- unlist(strsplit(rownames(data_t)[i], '|', fixed = T))
+	if(length(tmp) > 1) loca <- c(loca, i)
+}
+data_sub <- data_t[loca,]
+
+# 2. change name
+gene <- c()
+for(i in 1:nrow(data_sub)){
+	tmp <- unlist(strsplit(rownames(data_sub)[i], '|', fixed = T))
+	gene <- c(gene, tmp)
+}
+gene_2col <- matrix(gene, 2, length(gene)/2)
+gene_name <- gene_2col[2,]
+rownames(data_sub) <- gene_name
+
+data_ttt <- data_sub
+
+return(data_ttt)
+
+}
+
+
+getFractions.Abbas <- function(XX,YY,w=NA){
+  ss.remove=c()
+  ss.names=colnames(XX)
+  while(T){
+    if(length(ss.remove)==0)tmp.XX=XX else{
+      if(is.null(ncol(tmp.XX)))return(rep(0,ncol(XX)))
+      tmp.XX=tmp.XX[,-ss.remove]
+    }
+    if(length(ss.remove)>0){
+      ss.names=ss.names[-ss.remove]
+      if(length(ss.names)==0)return(rep(0,ncol(XX)))
+    }
+    if(is.na(w[1]))tmp=lsfit(tmp.XX,YY,intercept=F) else tmp=lsfit(tmp.XX,YY,w,intercept=F)
+    if(is.null(ncol(tmp.XX)))tmp.beta=tmp$coefficients[1] else tmp.beta=tmp$coefficients[1:(ncol(tmp.XX)+0)]
+    if(min(tmp.beta>0))break
+    ss.remove=which.min(tmp.beta)
+  }
+  tmp.F=rep(0,ncol(XX))
+  names(tmp.F)=colnames(XX)
+  tmp.F[ss.names]=tmp.beta
+  return(tmp.F)
+}
+
 
 TIMER <- function(cc = cancer_str){
 	if(cc=='skcm')cc.type='06A' else cc.type='01A'
@@ -346,55 +632,8 @@ TIMER <- function(cc = cancer_str){
 
 }
 
-#--------------------------------------------------------------
 
-filter_gene_name <- function(data_t){
-# 1. extra special row
-loca <- c()
-for(i in 1:nrow(data_t)){
-	tmp <- unlist(strsplit(rownames(data_t)[i], '|', fixed = T))
-	if(length(tmp) > 1) loca <- c(loca, i)
-}
-data_sub <- data_t[loca,]
 
-# 2. change name
-gene <- c()
-for(i in 1:nrow(data_sub)){
-	tmp <- unlist(strsplit(rownames(data_sub)[i], '|', fixed = T))
-	gene <- c(gene, tmp)
-}
-gene_2col <- matrix(gene, 2, length(gene)/2)
-gene_name <- gene_2col[2,]
-rownames(data_sub) <- gene_name
-
-data_ttt <- data_sub
-
-return(data_ttt)
-
-}
-
-getFractions.Abbas <- function(XX,YY,w=NA){
-  ss.remove=c()
-  ss.names=colnames(XX)
-  while(T){
-    if(length(ss.remove)==0)tmp.XX=XX else{
-      if(is.null(ncol(tmp.XX)))return(rep(0,ncol(XX)))
-      tmp.XX=tmp.XX[,-ss.remove]
-    }
-    if(length(ss.remove)>0){
-      ss.names=ss.names[-ss.remove]
-      if(length(ss.names)==0)return(rep(0,ncol(XX)))
-    }
-    if(is.na(w[1]))tmp=lsfit(tmp.XX,YY,intercept=F) else tmp=lsfit(tmp.XX,YY,w,intercept=F)
-    if(is.null(ncol(tmp.XX)))tmp.beta=tmp$coefficients[1] else tmp.beta=tmp$coefficients[1:(ncol(tmp.XX)+0)]
-    if(min(tmp.beta>0))break
-    ss.remove=which.min(tmp.beta)
-  }
-  tmp.F=rep(0,ncol(XX))
-  names(tmp.F)=colnames(XX)
-  tmp.F[ss.names]=tmp.beta
-  return(tmp.F)
-}
 
 RMSE_one_vector <- function(a){
 	rmse <- sqrt(sum(a^2)/length(a))
@@ -407,17 +646,16 @@ RMSE_two_vector <- function(a, b){
 	return(rmse)
 }
 
-#R2_two_vector <- function(predict, actual){
-#	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
-#	return(R2)
-#}
-
 R2_two_vector <- function(predict, actual){
 	#R2 <- 1 - sum( (actual-predict )^2 ) / sum( (actual-mean(actual) )^2  ) 
 	R2 <- 1 - sum( (actual-predict )^2 ) / sum( actual^2 ) 
 	return(R2)
 }
 
+R2_two_vector_withIntercept <- function(predict, actual){
+	R2 <- 1 - sum( (actual-predict )^2 ) / sum( (actual-mean(actual) )^2  ) 
+	return(R2)
+}
 
 RMSE_one_mat <- function(aaa){
 	
@@ -426,8 +664,10 @@ RMSE_one_mat <- function(aaa){
 	for(i in 1:n_gene){
 		tmp_a <- aaa[i, ]
 		vc[i] <- RMSE_one_vector(tmp_a)
+
 	}
 	rownames(vc) <- rownames(aaa)
+	
 	return(vc)
 }
 
@@ -439,8 +679,10 @@ RMSE_two_mat <- function(aaa, bbb){
 		tmp_a <- aaa[i, ]
 		tmp_b <- bbb[i, ]
 		vc[i] <- RMSE_two_vector(tmp_a, tmp_b)
+
 	}
 	rownames(vc) <- rownames(aaa)
+	
 	return(vc)
 }
 
@@ -457,16 +699,20 @@ R2_two_mat <- function(aaa, bbb){
 	return(vc)
 }
 
-do_regression <- function(proportion=Prop_EPIC, data=bulk1){
-	P_2nd <- c()
-	n_gene <- nrow(data)
-	g_sample <- ncol(data)
+R2_two_mat_withIntercept <- function(aaa, bbb){
+	if(nrow(aaa) != nrow(bbb)) stop("size of aaa and bbb different!")
+	n_gene <- nrow(aaa)
+	vc <- matrix(NA, n_gene, 1)
 	for(i in 1:n_gene){
-		coeff <- getFractions.Abbas(proportion, t(data)[, i])
-		P_2nd <- rbind(P_2nd, coeff)
+		tmp_a <- aaa[i, ]
+		tmp_b <- bbb[i, ]
+		vc[i] <- R2_two_vector_withIntercept(tmp_a, tmp_b)
 	}
-	return(P_2nd)
+	rownames(vc) <- rownames(aaa)
+	return(vc)
 }
+
+
 
  do_regression_unique <- function(proportion=Prop_EPIC[,1:7], data=bulk1, indicate=ss_signature){
  	print("unique regression")
@@ -479,7 +725,7 @@ do_regression <- function(proportion=Prop_EPIC, data=bulk1){
 	for(i in 1:n_gene){
 		#print(i)
 		cell <- which(indicate[i, ] == 1)
-		if(length(cell) > 1) stop("return 2 cell type!")
+		#if(length(cell) > 1) stop("return 2 cell type!")
 	 	pp <- proportion[, cell]
 		y <- data[i, ]
 		ddd <- cbind(pp, y)
@@ -489,17 +735,6 @@ do_regression <- function(proportion=Prop_EPIC, data=bulk1){
 	}	
 	return(P_2nd)
  }
-
-
-row_vira <- function(aaa){
-	n_gene <- nrow(aaa)
-	vc <- matrix(NA, n_gene, 1)
-	for(i in 1:n_gene){
-		ave <- mean(aaa[i, ])
-		vc[i] <- sqrt(sum( (aaa[i, ] - ave)^2 ) )
-	}
-	return(vc)
-}
 
 extract_marker <- function(aaa, method){
 	# mmmm is a list to store cell marker, the name of each element is cell type,
@@ -578,6 +813,16 @@ extract_marker <- function(aaa, method){
 
 }
 
+extract_marker_ICTD <- function(C){
+	specific_marker <- list()
+	for(i in 1:ncol(C)){
+		specific_marker[[i]] <- rownames(C)[which(C[, i] != 0)]
+		names(specific_marker)[i] <- colnames(C)[i]
+	}
+
+	return(specific_marker)
+}
+
 unique_signature <- function(aaa, cutoff=0.05){
 
 	#cutoff <- 0.05
@@ -604,7 +849,6 @@ unique_signature <- function(aaa, cutoff=0.05){
 }
 
 
-
 rm_zero_row <- function(bulk){
 
 	row_sub <- apply(bulk, 1, function(row) all( row == 0)) #return logistic value(T/F)
@@ -615,5 +859,21 @@ rm_zero_row <- function(bulk){
 
 	return(bulk)
 }
+
+correspond_matrix <- function(sss=U, ccc=ss_signature){
+	mmm <- matrix(0, nrow(sss), ncol(sss))
+	for(i in 1:nrow(ccc)){
+		cell <- which(ccc[i,] == 1)
+		mmm[i, cell] <- sss[i, cell]
+	}
+	rownames(mmm) <- rownames(sss)
+	colnames(mmm) <- colnames(sss)
+
+	return(mmm)
+}
+
+
+
+
 
 

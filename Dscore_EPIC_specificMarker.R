@@ -1,7 +1,6 @@
 rm(list = ls())
 
 library(EPIC)
-library("caret")
 setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
 
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
@@ -12,7 +11,8 @@ EPIC_rmse <- list()
 #remove LAML
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD","BRCA_TNBC")
+cancer_lib <- c("BRCA","COAD")
+
 for(k in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[k]
 	print(cancer_str)
@@ -27,11 +27,8 @@ for(k in 1:length(cancer_lib)){
 	bulk <- bulk[intersect(rownames(bulk),TCGA_ensem_annotation[which(TCGA_ensem_annotation[,3]=="protein_coding" & TCGA_ensem_annotation[,4]!="") ,4]),]
 
 	# remove whole zero row
-	row_sub <- apply(bulk, 1, function(row) all( row == 0)) #return logistic value(T/F)
-	Zero <- which(row_sub == T)
-	print(length(Zero))
-	if(length(Zero) == 0) bulk <- bulk
-	if(length(Zero) > 0)  bulk <- bulk[-Zero,]
+	bulk <- rm_zero_row(bulk)
+
 
 #----------------------
 # seed <- MR? 98 genes
@@ -52,30 +49,54 @@ for(k in 1:length(cancer_lib)){
 
 	bulk1 <- bulk[commonSiga,]
 
-	#colnames(bulk1) <- paste("ssample",c(1:ncol(bulk1)), sep="")
-	out1 <- EPIC(bulk1)
-	print("finish EPIC")
-	Prop_EPIC <- out1$cellFraction
 	signature <- EPIC::TRef$refProfiles[commonSiga,]
 	cell_marker <- extract_marker(signature,method="EPIC")
 	ss_signature <- unique_signature(signature)
+	ss_signature <- rm_zero_row(ss_signature)
+	bulk1 <- bulk1[rownames(ss_signature), ]
+
+	#colnames(bulk1) <- paste("ssample",c(1:ncol(bulk1)), sep="")
+	out1 <- EPIC(bulk1)
+	print("finish EPIC")
+	Prop_EPIC <- out1$cellFraction[,1:7]
+
 
 	# (1) use whole prop or (2) use cell specific prop	
+	#1{
 	#S <- do_regression(Prop_EPIC, bulk1)		#!: use small data do regression
 	#bulk_est <- S %*% t(Prop_EPIC)
-	bulk_est <- ss_signature %*% t(Prop_EPIC[,1:7]) 
-	rownames(bulk_est) <- rownames(bulk1)	
+	#}
+	#2{
+	#bulk_est <- ss_signature %*% t(Prop_EPIC[,1:7]) 
+	#rownames(bulk_est) <- rownames(bulk1)	
+	#bulk_est222 = bulk_est
+	#}
+	#3{
+	#CC = do_correlation(Prop_EPIC[,1:7], bulk1, ss_signature)
+	SS <- do_regression_unique(Prop_EPIC, bulk1, ss_signature)
+	bulk_est <- SS %*% t(Prop_EPIC)
+	#bulk_est333 = bulk_est
+	#}
 
-	#1 direct rmse
+
+
+	#a. direct rmse
 	#rmse_gene <- RMSE_two_mat(bulk1, bulk_est)
-	#2 rmse of radio
+	#b.  rmse of radio
 	#{
 	#rmse_gene <- RMSE_two_mat(bulk1, bulk_est)
 	#gene_vira <- row_vira(bulk1)
 	#rmse_gene <- rmse_gene / gene_vira
 	#}
+	# c. R2
 	rmse_gene <- R2_two_mat(bulk_est, bulk1)
 
+	
+
+
+	####debug
+	#elist <- list(bulk1, signature[rownames(ss_signature),], Prop_EPIC, ss_signature)
+	
 	#extract marker corresponding rmse
 	cell_rmse <- list()
 	for(i in 1:length(cell_marker)){
@@ -90,17 +111,20 @@ for(k in 1:length(cancer_lib)){
 	#pdf(file = pdf_str)
 	flag_plot <- F
 	if(flag_plot == T){
+	pdf_str <- paste(cancer_str, "_epic_cell_rmse_unique.pdf", sep="")
+	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "rmse_unique", sep="-")
 		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
-	#dev.off()
+	dev.off()
 	}
+
 
 	flag_plot <- T
 	if(flag_plot == T){
-	pdf_str <- paste(cancer_str, "_epic_cell_R2_unique.pdf", sep="")
+	pdf_str <- paste(cancer_str, "_epic_cell_R2.pdf", sep="")
 	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
@@ -173,13 +197,11 @@ RMSE_two_vector <- function(a, b){
 	return(rmse)
 }
 
-library("caret")
 R2_two_vector <- function(predict, actual){
-	R2 <- caret::postResample(predict, actual)[["Rsquared"]]
+	#R2 <- 1 - sum( (actual-predict )^2 ) / sum( (actual-mean(actual) )^2  ) 
+	R2 <- 1 - sum( (actual-predict )^2 ) / sum( actual^2 ) 
 	return(R2)
 }
-
-
 
 RMSE_one_mat <- function(aaa){
 	
@@ -233,6 +255,43 @@ do_regression <- function(proportion=Prop_EPIC, data=bulk1){
 	}
 
 	return(P_2nd)
+}
+
+ do_regression_unique <- function(proportion=Prop_EPIC[,1:7], data=bulk1, indicate=ss_signature){
+ 	print("unique regression")
+ 	if(nrow(data) != nrow(indicate)) stop("number of gene in indicate NOT match!")
+ 	if(ncol(proportion) != ncol(indicate)) stop("number of sample in indicate NOT match!")
+ 	P_2nd <- matrix(0, nrow(indicate), ncol(indicate))
+ 	rownames(P_2nd) <- rownames(indicate)
+	n_gene <- nrow(data)
+	n_sample <- ncol(data)	
+	for(i in 1:n_gene){
+		#print(i)
+		cell <- which(indicate[i, ] == 1)
+		if(length(cell) > 1) stop("return 2 cell type!")
+	 	pp <- proportion[, cell]
+		y <- data[i, ]
+		ddd <- cbind(pp, y)
+		ddd <- as.data.frame(ddd)
+		coeff <- lm(y~pp + 0, ddd)	#NOTE : the order is matter!
+		P_2nd[i, cell] <- coeff[[1]]
+	}	
+	return(P_2nd)
+ }
+
+do_correlation <- function(proportion, data, indicate){
+	n_gene <- nrow(data)
+	n_sample <- ncol(data)	
+	for(i in 1:n_gene){
+		cell <- which(indicate[i, ] == 1)
+		if(length(cell) > 1) stop("return 2 cell type!")
+	 	pp <- proportion[, cell]
+	 	y <- data[i, ]
+	 	print(cor(pp,y) )
+
+
+	}
+
 }
 
 filter_gene_name <- function(data_t){
@@ -374,4 +433,16 @@ unique_signature <- function(aaa, cutoff=0.05){
 
 	return(mmm)
 }
+
+rm_zero_row <- function(bulk){
+
+	row_sub <- apply(bulk, 1, function(row) all( row == 0)) #return logistic value(T/F)
+	Zero <- which(row_sub == T)
+	print(length(Zero))
+	if(length(Zero) == 0) bulk <- bulk
+	if(length(Zero) > 0)  bulk <- bulk[-Zero,]
+
+	return(bulk)
+}
+
 

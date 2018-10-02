@@ -20,6 +20,7 @@ load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score/I
 
 
 cancer_lib <- c("BRCA","COAD")
+cancer_lib <- c("GSE103322")
 cancer_str <- c("103322")
 pp <- list()
 count <- 1
@@ -46,7 +47,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-	itmp <- ICTD_rmse[[k]][["B_mark"]]
+	itmp <- ICTD_rmse[[k]][["B"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -103,7 +104,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-	itmp <- ICTD_rmse[[k]][["CD4_mark"]]
+	itmp <- ICTD_rmse[[k]][["T"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -168,7 +169,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-		itmp <- ICTD_rmse[[k]][["CD8_mark"]]
+		itmp <- ICTD_rmse[[k]][["T"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -215,7 +216,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-		itmp <- ICTD_rmse[[k]][["Macro_mark"]]
+		itmp <- ICTD_rmse[[k]][["Macro"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -260,11 +261,11 @@ k=1
                       								axis.ticks.x=element_blank())
     	count = count + 1
 
-#5 NK 
+#5 Fibroblat 
 	p_data <- c()
 	cancer_str <- cancer_lib[k]
 	
-	etmp <- EPIC_rmse[[k]][["NK_mark"]]
+	etmp <- EPIC_rmse[[k]][["CAFs_mark"]]
 	rmse  <- matrix(etmp, length(etmp), 1)
 	method <- rep("epic", length(etmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -272,7 +273,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)	
 
-		itmp <- ICTD_rmse[[k]][["NK_mark"]]
+		itmp <- ICTD_rmse[[k]][["Fibro"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -280,28 +281,46 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)	
 
-	ctmp <- CIBER_rmse[[k]][["NK.cells.resting"]]
-	rmse <- matrix(ctmp, length(ctmp), 1)
-	method <- rep("ciber_NK_rest", length(ctmp), 1)
-	algo <- matrix(method, length(ctmp), 1)
-	rownames(rmse) <- names(ctmp)
-	rmse <- cbind.data.frame(rmse, algo)
-	p_data <- rbind(p_data, rmse)
-
-	ctmp <- CIBER_rmse[[k]][["NK.cells.activated"]]
-	rmse <- matrix(ctmp, length(ctmp), 1)
-	method <- rep("ciber_NK_act", length(ctmp), 1)
-	algo <- matrix(method, length(ctmp), 1)
-	rownames(rmse) <- names(ctmp)
-	rmse <- cbind.data.frame(rmse, algo)
-	p_data <- rbind(p_data, rmse)
 
 	p_data <- as.data.frame(p_data)
 
 	pp[[count]] <- ggplot(p_data, aes(x=as.factor(algo), y=rmse)) + 
-   		geom_boxplot(fill= c("orchid", "palegreen3", "navajowhite2","gold"), alpha=0.8) + 
+   		geom_boxplot(fill= c("orchid", "palegreen3"), alpha=0.8) + 
    		#geom_violin(aes(fill = as.factor(algo)),show.legend=F) + 
-    	xlab("algo") + ylab("R2") + ggtitle(paste(cancer_str,":NK cell R2 comparison",sep="") ) +
+    	xlab("algo") + ylab("R2") + ggtitle(paste(cancer_str,":Fibroblast cell R2 comparison",sep="") ) +
+    	#ylim(0, 0.2) +
+    	theme(plot.title = element_text(hjust = 0.5),axis.title.x=element_blank(), 
+    												axis.text.x=element_blank(),
+                      								axis.ticks.x=element_blank())
+    count = count + 1
+
+#6 Endotheliao
+	p_data <- c()
+	cancer_str <- cancer_lib[k]
+	
+	etmp <- EPIC_rmse[[k]][["endoth_mark"]]
+	rmse  <- matrix(etmp, length(etmp), 1)
+	method <- rep("epic", length(etmp), 1)
+	algo <- matrix(method, length(method), 1)
+	rownames(rmse) <- names(etmp)
+	rmse <- cbind.data.frame(rmse, algo)
+	p_data <- rbind(p_data, rmse)	
+
+		itmp <- ICTD_rmse[[k]][["EPith"]]
+	rmse  <- matrix(itmp, length(itmp), 1)
+	method <- rep("ictd", length(itmp), 1)
+	algo <- matrix(method, length(method), 1)
+	rownames(rmse) <- names(itmp)
+	rmse <- cbind.data.frame(rmse, algo)
+	p_data <- rbind(p_data, rmse)	
+
+
+	p_data <- as.data.frame(p_data)
+
+	pp[[count]] <- ggplot(p_data, aes(x=as.factor(algo), y=rmse)) + 
+   		geom_boxplot(fill= c("orchid", "palegreen3"), alpha=0.8) + 
+   		#geom_violin(aes(fill = as.factor(algo)),show.legend=F) + 
+    	xlab("algo") + ylab("R2") + ggtitle(paste(cancer_str,":Endothelial cell R2 comparison",sep="") ) +
     	#ylim(0, 0.2) +
     	theme(plot.title = element_text(hjust = 0.5),axis.title.x=element_blank(), 
     												axis.text.x=element_blank(),
@@ -311,7 +330,7 @@ k=1
 
 
 #pdf("1111.pdf", width = 30, height = 12)
-pdf("R2_103322.pdf", width = 24, height = 5)
+pdf("R2_103322_4method.pdf", width = 24, height = 5)
 do.call(grid.arrange, c(pp,nrow=1 ) )
 dev.off()
 
