@@ -11,7 +11,7 @@ EPIC_rmse <- list()
 #remove LAML
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD")
+cancer_lib <- c("COAD","BRCA_TNBC")
 
 for(k in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[k]

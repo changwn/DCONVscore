@@ -19,9 +19,9 @@ load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score/I
 
 
 
-cancer_lib <- c("BRCA","COAD")
-cancer_lib <- c("GSE103322")
-cancer_str <- c("103322")
+cancer_lib <- c("COAD","BRCA")
+#cancer_lib <- c("GSE103322")
+#cancer_str <- c("103322")
 pp <- list()
 count <- 1
 
@@ -104,7 +104,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-	itmp <- ICTD_rmse[[k]][["T"]]
+	itmp <- ICTD_rmse[[k]][["TNBCK"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -169,7 +169,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-		itmp <- ICTD_rmse[[k]][["T"]]
+		itmp <- ICTD_rmse[[k]][["TNBCK"]]
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -216,7 +216,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)
 
-		itmp <- ICTD_rmse[[k]][["Macro"]]
+		itmp <- ICTD_rmse[[k]][["Myeloid"]]	###myeloid
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -294,7 +294,7 @@ k=1
                       								axis.ticks.x=element_blank())
     count = count + 1
 
-#6 Endotheliao
+#6 Endothelial
 	p_data <- c()
 	cancer_str <- cancer_lib[k]
 	
@@ -306,7 +306,7 @@ k=1
 	rmse <- cbind.data.frame(rmse, algo)
 	p_data <- rbind(p_data, rmse)	
 
-		itmp <- ICTD_rmse[[k]][["EPith"]]
+		itmp <- ICTD_rmse[[k]][["adipocyte"]]	###adipocyte
 	rmse  <- matrix(itmp, length(itmp), 1)
 	method <- rep("ictd", length(itmp), 1)
 	algo <- matrix(method, length(method), 1)
@@ -330,7 +330,7 @@ k=1
 
 
 #pdf("1111.pdf", width = 30, height = 12)
-pdf("R2_103322_4method.pdf", width = 24, height = 5)
+pdf("R2_COAD_4method.pdf", width = 24, height = 5)
 do.call(grid.arrange, c(pp,nrow=1 ) )
 dev.off()
 

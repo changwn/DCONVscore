@@ -9,14 +9,17 @@ TIMER_rmse <- list()
 #NO laml
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD")
+cancer_lib <- c("COAD", "BRCA")
 
 for(k in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[k]
 	cancer_str <- tolower(cancer_str)
 	print(cancer_str)
 
-	timer_result <- TIMER(cancer_str)
+	timer_result <- TIMER(cancer_str)	
+
+#fffDir <- c("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA-BRCA_TNBC_FPKM_T.RData")
+#timer_result <- TIMER(cancer_str, dataDir = fffDir)
 	#names(timer_result)
 	#dim(timer_result[[1]])
 	Prop_TIMER <- timer_result[[1]]
@@ -67,7 +70,7 @@ for(k in 1:length(cancer_lib)){
 	#pdf_str <- "Timer_cell_rmse.pdf"
 	plot_flag = T
 	if(plot_flag == T){
-	pdf_str <- paste(cancer_str, "_timer_cell_rmse_unique.pdf", sep="")
+	pdf_str <- paste(toupper(cancer_str), "_timer_cell_R2.pdf", sep="")
 	pdf(file = pdf_str)
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "R2_unique", sep="-")
@@ -113,7 +116,7 @@ save(TIMER_rmse, file = "TIMER_333_list.RData")
 
 #-----------------------------------------------------------------------functions
 
-TIMER <- function(cc = cancer_str){
+TIMER <- function(cc = cancer_str, dataDir = F){
 	if(cc=='skcm')cc.type='06A' else cc.type='01A'
 
 	##----- setup parameters and establish the output file -----##
@@ -121,8 +124,14 @@ TIMER <- function(cc = cancer_str){
 	names(signature.genes)=c('B_cell','T_cell.CD4','T_cell.CD8','Neutrophil','Macrophage','DC')
 
 	##----- load and process gene expression data -----##
+if(dataDir == F){
 	file_str <- paste("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA-", toupper(cancer_str), "_FPKM_T.RData", sep="")
+}else{
+	file_str = dataDir
+	print("use dir in parameter!")
+}
 	data_t <- get(load(file_str))
+	print(dim(data_t))
 	data_ttt <- filter_gene_name(data_t)
 	dd <- data_ttt
 	#dd <- get(load(file_str) )
@@ -160,6 +169,7 @@ TIMER <- function(cc = cancer_str){
  		mm=c()
   		for(id in sID){
    			tmp=unlist(strsplit(id,'-'))
+   			#tmp=unlist(strsplit(id,'_'))	#chang:for BRCA_TNBC
     		if(length(tmp)==1){
      	 		tmp=unlist(strsplit(id,'\\.'))
     		}
@@ -173,7 +183,7 @@ TIMER <- function(cc = cancer_str){
 	}
 	rownames(AGP)=getID(AGP[,1],4)
 	colnames(dd)=getID(colnames(dd),4)
-
+	#colnames(dd)=getID(colnames(dd),3)
 
 	##----- Select single reference samples of pre-selected immune cell types -----##
 	B_cell=362:385

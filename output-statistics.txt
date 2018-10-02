@@ -934,3 +934,93 @@ sample estimates:
 odds ratio 
   3.771149 
 
+Number of genes inversely correlated with purity is 3729
+
+Number of immune genes inversely correlated with purity is 638
+
+Test if immune genes are enriched for inverse correlation with purity: 
+
+
+	Fisher's Exact Test for Count Data
+
+data:  
+p-value < 2.2e-16
+alternative hypothesis: true odds ratio is not equal to 1
+95 percent confidence interval:
+ 1.957135 2.402796
+sample estimates:
+odds ratio 
+  2.169289 
+
+Number of genes inversely correlated with purity is 3729
+
+Number of immune genes inversely correlated with purity is 638
+
+Test if immune genes are enriched for inverse correlation with purity: 
+
+
+	Fisher's Exact Test for Count Data
+
+data:  
+p-value < 2.2e-16
+alternative hypothesis: true odds ratio is not equal to 1
+95 percent confidence interval:
+ 1.957135 2.402796
+sample estimates:
+odds ratio 
+  2.169289 
+
+Number of genes inversely correlated with purity is 3729
+
+Number of immune genes inversely correlated with purity is 638
+
+Test if immune genes are enriched for inverse correlation with purity: 
+
+
+	Fisher's Exact Test for Count Data
+
+data:  
+p-value < 2.2e-16
+alternative hypothesis: true odds ratio is not equal to 1
+95 percent confidence interval:
+ 1.957135 2.402796
+sample estimates:
+odds ratio 
+  2.169289 
+
+Number of genes inversely correlated with purity is 3729
+
+Number of immune genes inversely correlated with purity is 638
+
+Test if immune genes are enriched for inverse correlation with purity: 
+
+
+	Fisher's Exact Test for Count Data
+
+data:  
+p-value < 2.2e-16
+alternative hypothesis: true odds ratio is not equal to 1
+95 percent confidence interval:
+ 1.957135 2.402796
+sample estimates:
+odds ratio 
+  2.169289 
+
+Number of genes inversely correlated with purity is 3766
+
+Number of immune genes inversely correlated with purity is 630
+
+Test if immune genes are enriched for inverse correlation with purity: 
+
+
+	Fisher's Exact Test for Count Data
+
+data:  
+p-value < 2.2e-16
+alternative hypothesis: true odds ratio is not equal to 1
+95 percent confidence interval:
+ 1.904199 2.339316
+sample estimates:
+odds ratio 
+  2.111362 
+

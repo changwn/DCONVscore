@@ -281,10 +281,10 @@ bulk_est <- SS %*% t(V)
 rmse_gene <- R2_two_mat(bulk_est, X1)
 
 #2
-SS <- correspond_matrix(U, ss_signature)
-bulk_est <- SS %*% t(V)
-#bulk_est <- U %*% t(V)
-rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
+#SS <- correspond_matrix(U, ss_signature)
+#bulk_est <- SS %*% t(V)
+######bulk_est <- U %*% t(V)
+#rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
 
 
 #extract marker corresponding rmse

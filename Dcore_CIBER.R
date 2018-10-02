@@ -20,11 +20,10 @@ CIBER_rmse <- list()
 #NO laml
 cancer_lib <- c("BLCA", "BRCA", "CESC", "COAD", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LGG", "LIHC", "LUAD", 
 				"LUSC", "OV", "PAAD", "PCPG", "PRAD", "READ", "SARC", "SKCM", "STAD", "TGCT", "THYM", "UCS", "UVM")
-cancer_lib <- c("BRCA","COAD")
+cancer_lib <- c("COAD","BRCA_TNBC")
 
 for(k in 1:length(cancer_lib)){
 	cancer_str <- cancer_lib[k]
-	cancer_str <- tolower(cancer_str)
 	print(cancer_str)
 
 	file_str <- paste("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA-", cancer_str, "_FPKM_T.RData", sep="")
@@ -91,7 +90,7 @@ for(k in 1:length(cancer_lib)){
 	#ggblue <- 
 	plot_flag <- T
 	if(plot_flag == T){
-	pdf_str <- paste(cancer_str, "_ciber_cell_rmse.pdf", sep="")
+	pdf_str <- paste(cancer_str, "_ciber_cell_R2.pdf", sep="")
 	#pdf_str <- "Timer_cell_rmse.pdf"
 	pdf(file = pdf_str)
 	for(i in 1:length(cell_marker)){
