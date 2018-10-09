@@ -1,12 +1,12 @@
 
 #COAD
-#names(R1_filter_step1_results_new[[4]])[c(1,6,8,9,10)]
+names(R1_filter_step1_results_new[[4]])[c(1,6,8,9,10)]
 
 #TNBC
 #names(R1_filter_step1_results_new[[4]])[c(2,3,4,6,9)]
 
 #BRCA
-names(R1_filter_step1_results_new[[4]])[c(1,3,5,7,8)]
+#names(R1_filter_step1_results_new[[4]])[c(1,3,5,7,8)]
 
 ICTD_rmse <- list()
 #cancer_str <- "BRCA"
@@ -38,7 +38,7 @@ bulk <- rm_zero_row(bulk)
 #dlll <- R1_filter_step1_results_new[[4]][c(1,3,5,7,8)]
 dlll <- R1_filter_step1_results_new[[4]][c(1,6,8,9,10)]	#coad
 
-if(F){
+
 adipocytes_mark <- dlll[[1]]
 B_mark <- dlll[[2]]
 Myeloid_mark <- dlll[[3]]
@@ -60,30 +60,6 @@ C[18:35, 2] <- rep(1, 18)
 C[36:51, 3] <- rep(1, 16)
 C[52:70, 4] <- rep(1, 19)
 C[71:90, 5] <- rep(1, 20)
-}
-if(F){
-Fibro_mark <- dlll[[1]]
-B_mark <- dlll[[2]]
-T_mark <- dlll[[3]]
-Myeloid_mark <- dlll[[4]]
-Endothelial_mark <- dlll[[5]]
-
-mark5 <- c(Fibro_mark, B_mark, T_mark, Myeloid_mark, Endothelial_mark)
-XXX <- bulk[mark5, ]
-C <- matrix(0, nrow(XXX), 5)
-rownames(C) <- rownames(XXX)
-colnames(C) <- c("Fibro","B","T","Myeloid","Endo")
-length(Fibro_mark)
-length(B_mark)
-length(T_mark)
-length(Myeloid_mark)
-length(Endothelial_mark)
-C[1:7, 1] <- rep(1, 7)
-C[8:24, 2] <- rep(1, 17)
-C[25:44, 3] <- rep(1, 20)
-C[45:55, 4] <- rep(1, 11)
-C[56:65, 5] <- rep(1, 10)	
-}
 
 bulk = XXX
 ss_signature = C
@@ -130,7 +106,7 @@ V=ttt1$V[,c(1,2,4,3)]
 U=ttt1$U
 V=ttt1$V
 
-#1
+#calculate signature matrix and R2
 SS <- do_regression_unique(V, X1, ss_signature)
 bulk_est <- SS %*% t(V)
 rmse_gene <- R2_two_mat(bulk_est, X1)

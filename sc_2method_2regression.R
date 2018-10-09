@@ -247,7 +247,7 @@ indiS=1-NMF_indi_all
 ###########
 
 ###########Parameter settings
-theta=5 ##penalty parameter for constraints on NMF_indi_all
+theta=1 ##penalty parameter for constraints on NMF_indi_all
 indiS_method="nonprdescent" ##the updating scheme for the structural constraints
 iter=2000
 alpha=beta=gamma=roh=0
@@ -265,7 +265,6 @@ library(NMF)
 set.seed(123456)
 source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
 source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
-set.seed(123456)
 ###########Run the constrained qNMF
 ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
 #names(ttt1)
