@@ -1,12 +1,12 @@
 
 #COAD
-#names(R1_filter_step1_results_new[[4]])[c(1,6,8,9,10)]
+names(R1_filter_step1_results_new[[4]])[c(1,6,8,9,10)]
 
 #TNBC
 #names(R1_filter_step1_results_new[[4]])[c(2,3,4,6,9)]
 
 #BRCA
-names(R1_filter_step1_results_new[[4]])[c(1,3,5,7,8)]
+#names(R1_filter_step1_results_new[[4]])[c(1,3,5,7,8)]
 
 ICTD_rmse <- list()
 #cancer_str <- "BRCA"
@@ -17,7 +17,7 @@ print(cancer_str)
 #rm(list = ls())
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_10_01_data/TCGA-COAD_newpipeline201809.RData")
 
-setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+#setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
 
 load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_28_Brianna/signature_matrix_from_three_tools.RData")
 load("C:/Users/wnchang/Documents/F/PhD_Research/TCGA_data/TCGA_ensem_annotation.RData")
@@ -38,7 +38,7 @@ bulk <- rm_zero_row(bulk)
 #dlll <- R1_filter_step1_results_new[[4]][c(1,3,5,7,8)]
 dlll <- R1_filter_step1_results_new[[4]][c(1,6,8,9,10)]	#coad
 
-if(F){
+if(T){
 adipocytes_mark <- dlll[[1]]
 B_mark <- dlll[[2]]
 Myeloid_mark <- dlll[[3]]
@@ -95,46 +95,52 @@ cell_marker <- extract_marker_ICTD(ss_signature)
 
 ############### NMF
 data_t = log2(bulk + 1)			#NMF input 1
+#data_t = bulk
 NMF_indi_all = ss_signature		#NMF input 2
 
+NMF_indi_all=ss_signature
+NMF_indi_all0<-NMF_indi_all[which(apply(NMF_indi_all,1,sum)<=2),]
+NMF_indi_all01<-NMF_indi_all0[,which(apply(NMF_indi_all0,2,sum)>10)]
+NMF_indi_all01<-NMF_indi_all01[which(apply(NMF_indi_all01,1,sum)>0),]
+NMF_indi_all=NMF_indi_all01[rownames(NMF_indi_all01)%in%rownames(data_t),]
 X1=data_t[match(rownames(NMF_indi_all),rownames(data_t)),]###take only those rows that correspond to rows in NMF_indi_all
 K=ncol(NMF_indi_all)
 indiS=1-NMF_indi_all
 ###########
 
 ###########Parameter settings
-theta=5 ##penalty parameter for constraints on NMF_indi_all
+theta=5000 ##penalty parameter for constraints on NMF_indi_all
 indiS_method="nonprdescent" ##the updating scheme for the structural constraints
 iter=2000
 alpha=beta=gamma=roh=0
-roh=gamma=0.0001
+#gamma=roh=0.01
+#gamma=0.1
+#roh=0.1
 UM=VM=NULL
 qq=1
-epslog=6
+epslog=8
 nPerm=2
 initial_U=initial_V=NULL
 mscale=1
+cnormalize=1
 ###########
 
 library(NMF)
 set.seed(123456)
-source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
-source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
-set.seed(123456)
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/1009NMF/nmf.library.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/1009NMF/ini.R")
 ###########Run the constrained qNMF
-ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
+ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale,cnormalize)
 #names(ttt1)
 ###########
-U=ttt1$U[,c(1,2,4,3)]
-V=ttt1$V[,c(1,2,4,3)]
 U=ttt1$U
 V=ttt1$V
 
-#1
+#1 do regression again 
 SS <- do_regression_unique(V, X1, ss_signature)
 bulk_est <- SS %*% t(V)
 rmse_gene <- R2_two_mat(bulk_est, X1)
-
+hist(rmse_gene)
 
 #extract marker corresponding rmse
 cell_rmse <- list()
@@ -146,14 +152,15 @@ names(cell_rmse) <- names(cell_marker)
 
 flag_plot <- T
 if(flag_plot == T){
-	pdf_str <- paste(cancer_str, "_ICAD_cell_R2.pdf", sep="")
-	pdf(file = pdf_str)	
+	par(mfrow=c(1,5))
+	#pdf_str <- paste(cancer_str, "_ICAD_cell_R2.pdf", sep="")
+	#pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
 		pp <- barplot(cell_rmse[[i]], main=str, col = c("lightblue"), names.arg="")
 		text(pp, -0.002, srt = 45, adj= 1, xpd = TRUE, labels = names(cell_rmse[[i]]) , cex=0.5)
 	}
-	dev.off()
+	#dev.off()
 }
 
 

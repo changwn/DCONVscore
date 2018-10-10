@@ -19,7 +19,7 @@ load("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score/I
 
 
 
-cancer_lib <- c("COAD","BRCA")
+cancer_lib <- c("COAD")
 #cancer_lib <- c("GSE103322")
 #cancer_str <- c("103322")
 pp <- list()

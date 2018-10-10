@@ -1,7 +1,48 @@
 rm(list = ls())
-setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+#setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_08_23_deconvolution_score")
+setwd("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/1009NMF")
 
 
+# 1. GSE72056 melanoma
+dataSet = "GSE72056"
+list_flag <- T
+load("C:/Users/wnchang/Documents/F/PhD_Research/2018_06_28_singleCellSimulation/GSE72056_tg_data_list.RData")
+tg_data_list <- GSE72056_tg_data_list 
+Cell_Prop <- Cell_Prop_GSE72056
+
+# set parameter
+d=1
+if(list_flag == T)	bulk <- tg_data_list[[d]][[1]]
+if(list_flag == F)	bulk <- tg_data_list[[d]]
+if(list_flag == T) true_p <- tg_data_list[[d]][[2]]
+colnames(bulk) <- paste("ss",c(1:ncol(bulk)), sep="" )
+colnames(true_p) <- paste("ss", c(1:ncol(true_p)), sep="")
+
+#prepare high correlation data
+ccc <- cor(t(bulk), t(true_p))
+dim(ccc)
+colnames(ccc)
+B_mark <- names(ccc[order(-ccc[,1])[1:100],1])
+T_mark <- names(ccc[order(-ccc[,2])[1:100],2])
+Macro_mark <- names(ccc[order(-ccc[,3])[1:100],3])
+Fibro_mark <- names(ccc[order(-ccc[,5])[1:100],5])
+Epith_mark <- names(ccc[order(-ccc[,6])[1:100],6])
+Malignant_mark <- names(ccc[order(-ccc[,4])[1:100],4])
+mark6 <- c(B_mark, T_mark, Macro_mark, Fibro_mark, Epith_mark, Malignant_mark)
+XXX <- bulk[mark6, ]
+C <- matrix(0, nrow(XXX), 6)
+rownames(C) <- rownames(XXX)
+colnames(C) <- c("B","T","Macro","Fibro","EPith","Malignant")
+for(i in 1:ncol(C))
+{	
+	left <- 100*(i-1)+1
+	right <- 100*i
+	C[left:right, i] <- rep(1, 100)
+
+}
+
+
+if(F){
 # 4. GSE103322 HNC
 dataSet <- "GSE103322"
 list_flag <- T
@@ -40,6 +81,7 @@ for(i in 1:ncol(C))
 	right <- 150*i
 	C[left:right, i] <- rep(1, 150)
 
+}
 }
 
 bulk = XXX
@@ -238,9 +280,15 @@ cell_marker <- extract_marker_ICTD(ss_signature)
 
 
 ############### NMF
-data_t = log2(bulk + 1)			#NMF input 1
+data_t = bulk
+#data_t = log2(bulk + 1)			#NMF input 1
 NMF_indi_all = ss_signature		#NMF input 2
 
+NMF_indi_all=ss_signature
+NMF_indi_all0<-NMF_indi_all[which(apply(NMF_indi_all,1,sum)<=2),]
+NMF_indi_all01<-NMF_indi_all0[,which(apply(NMF_indi_all0,2,sum)>10)]
+NMF_indi_all01<-NMF_indi_all01[which(apply(NMF_indi_all01,1,sum)>0),]
+NMF_indi_all=NMF_indi_all01[rownames(NMF_indi_all01)%in%rownames(data_t),]
 X1=data_t[match(rownames(NMF_indi_all),rownames(data_t)),]###take only those rows that correspond to rows in NMF_indi_all
 K=ncol(NMF_indi_all)
 indiS=1-NMF_indi_all
@@ -251,40 +299,56 @@ theta=1 ##penalty parameter for constraints on NMF_indi_all
 indiS_method="nonprdescent" ##the updating scheme for the structural constraints
 iter=2000
 alpha=beta=gamma=roh=0
-roh=gamma=0.0001
+#gamma=roh=0.01
+#gamma=0.1
+#roh=0.1
 UM=VM=NULL
 qq=1
-epslog=6
+epslog=8
 nPerm=2
 initial_U=initial_V=NULL
 mscale=1
+cnormalize=1
 ###########
 
 
 library(NMF)
 set.seed(123456)
-source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/nmf.library.R")
-source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/NMF/ini.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/1009NMF/nmf.library.R")
+source("C:/Users/wnchang/Documents/F/PhD_Research/2018_09_11_ICAD_pipeline/1009NMF/ini.R")
 ###########Run the constrained qNMF
-ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale)
+ttt1=qnmf_indisS_all_revise(X1,initial_U,initial_V,NMF_indi_all,indiS_method,UM,VM,alpha,beta,gamma,roh,theta,qq,iter,epslog,mscale,cnormalize)
+#true nmf
+#res=nmf(X1, 6, )
+
 #names(ttt1)
 ###########
+X1=ttt1$X1
+sum((X1-(ttt1$initial_U)%*%t(ttt1$initial_V))^2)
+sum((X1-(ttt1$U)%*%t(ttt1$V))^2)
+cor(ttt1$U,NMF_indi_all)
+cor(ttt1$V,t(Cell_Prop$GSE72056_RNA2))
+cor(ttt1$V,t(Cell_Prop$GSE72056_RNA2),method="spearman")
+
 U=ttt1$U[,c(1,2,4,3)]
 V=ttt1$V[,c(1,2,4,3)]
 U=ttt1$U
 V=ttt1$V
 
-#1
+#1 do regression again 
 SS <- do_regression_unique(V, X1, ss_signature)
 bulk_est <- SS %*% t(V)
 rmse_gene <- R2_two_mat(bulk_est, X1)
 
-#2
-#SS <- correspond_matrix(U, ss_signature)
+#2 direct R-squared
 #bulk_est <- SS %*% t(V)
-######bulk_est <- U %*% t(V)
-#rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
+bulk_est <- U %*% t(V)
+rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
 
+#3 direct uniquely R-squared
+SS <- correspond_matrix(U, ss_signature)
+bulk_est <- SS %*% t(V)
+rmse_gene <- R2_two_mat_withIntercept(bulk_est, X1)
 
 #extract marker corresponding rmse
 cell_rmse <- list()
@@ -296,7 +360,7 @@ names(cell_rmse) <- names(cell_marker)
 
 flag_plot <- T
 if(flag_plot == T){
-	pdf_str <- paste(cancer_str, "_ICAD_cell_R2_directRegression.pdf", sep="")
+	pdf_str <- paste(cancer_str, "_ICAD_cell_R2_222Regression.pdf", sep="")
 	pdf(file = pdf_str)	
 	for(i in 1:length(cell_marker)){
 		str <- paste(cancer_str, names(cell_rmse)[i], "R2", sep="-")
